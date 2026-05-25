@@ -2,6 +2,7 @@ import { query } from '../../shared/database/pool.js';
 import { Alert, AlertFilters, AlertSeverity } from './alert.types.js';
 import { ForbiddenError, NotFoundError } from '../../middleware/errorHandler.js';
 import { logger } from '../../utils/logger.js';
+import { JobAggregation } from '../jobs/job.aggregator.js';
 
 export class AlertService {
   /**
@@ -195,5 +196,76 @@ export class AlertService {
       total,
       unreadCount,
     };
+  }
+
+  /**
+   * Generates alerts using the aggregated job results for intelligent severity mapping.
+   */
+  static async generateAlertsForJob(
+    jobId: string,
+    orgId: string,
+    aggregation: JobAggregation
+  ): Promise<Alert[]> {
+    // No alert for 'none' risk level
+    if (aggregation.riskLevel === 'none') {
+      return [];
+    }
+
+    // Map risk level to alert severity
+    const severityMap: Record<string, AlertSeverity> = {
+      low: 'low',
+      medium: 'medium',
+      high: 'high',
+      critical: 'critical',
+    };
+    const severity = severityMap[aggregation.riskLevel] || 'low';
+
+    // Build title based on dominant threat and risk level
+    const threatNames: Record<string, string> = {
+      deepfake: 'Deepfake indicators',
+      fake_news: 'Misinformation signals',
+      stolen_content: 'Stolen content match',
+      metadata_tampering: 'Metadata tampering',
+    };
+
+    let title: string;
+    const dominantName = aggregation.dominantThreat
+      ? threatNames[aggregation.dominantThreat] || aggregation.dominantThreat
+      : null;
+
+    const threatsAbove50 = Object.values(aggregation.moduleScores).filter((s) => s > 50).length;
+
+    if (aggregation.riskLevel === 'critical' && threatsAbove50 > 1) {
+      title = 'Critical: Multiple threats detected in analyzed content';
+    } else if (aggregation.riskLevel === 'critical') {
+      title = `Critical: ${dominantName || 'Severe threats'} detected`;
+    } else if (aggregation.riskLevel === 'high') {
+      title = `High risk: ${dominantName || 'Elevated threats'} detected`;
+    } else if (aggregation.riskLevel === 'medium') {
+      title = `Medium risk: ${dominantName || 'Suspicious signals'} in analyzed content`;
+    } else {
+      title = `Low risk: Minor indicators detected in analyzed content`;
+    }
+
+    const summaryText = aggregation.summary;
+
+    const insertRes = await query(
+      `INSERT INTO alerts (
+        org_id,
+        job_id,
+        severity,
+        title,
+        summary,
+        notification_sent,
+        notification_channels
+      )
+      VALUES ($1, $2, $3, $4, $5, false, '{}')
+      RETURNING *`,
+      [orgId, jobId, severity, title, summaryText]
+    );
+
+    const alert = insertRes.rows[0];
+    logger.info(`Generated ${severity} aggregation alert for Job ${jobId}: ${title}`);
+    return [alert];
   }
 }

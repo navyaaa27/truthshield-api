@@ -3,6 +3,7 @@ import { S3Service, verifyOrgScope } from '../../shared/storage/s3.service.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { query } from '../../shared/database/pool.js';
 import { ValidationError, AppError, ForbiddenError } from '../../middleware/errorHandler.js';
+import { AssetIndexer } from '../jobs/asset.indexer.js';
 
 const router = Router();
 
@@ -126,6 +127,39 @@ router.post(
         mimeType: check.actualMimeType,
         fileSizeBytes: check.fileSizeBytes,
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * POST /assets
+ * Indexes a confirmed upload as a brand asset.
+ */
+router.post(
+  '/assets',
+  authenticate,
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { s3Key, assetName, assetType } = req.body;
+      const orgId = (req as any).user.orgId;
+      const userId = (req as any).user.userId;
+
+      if (!s3Key || typeof s3Key !== 'string') {
+        throw new ValidationError('S3 Key must be a valid string');
+      }
+      if (!assetName || typeof assetName !== 'string') {
+        throw new ValidationError('Asset Name must be a valid string');
+      }
+      if (!assetType || typeof assetType !== 'string') {
+        throw new ValidationError('Asset Type must be a valid string');
+      }
+
+      const indexer = new AssetIndexer();
+      const asset = await indexer.indexUploadedAsset(orgId, userId, s3Key, assetName, assetType);
+
+      res.status(201).json(asset);
     } catch (error) {
       next(error);
     }

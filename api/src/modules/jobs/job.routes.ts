@@ -136,7 +136,33 @@ router.get(
         limit,
       });
 
-      res.status(200).json(result);
+      // Strip full result details from list view — include aggregation only
+      const lightJobs = result.jobs.map((j: any) => ({
+        id: j.id,
+        org_id: j.org_id,
+        content_type: j.content_type,
+        detection_modules: j.detection_modules,
+        status: j.status,
+        priority: j.priority,
+        source_url: j.source_url,
+        created_at: j.created_at,
+        updated_at: j.updated_at,
+        queued_at: j.queued_at,
+        started_at: j.started_at,
+        completed_at: j.completed_at,
+        aggregated_score: j.aggregated_score ?? null,
+        aggregated_verdict: j.aggregated_verdict ?? null,
+        aggregated_risk_level: j.aggregated_risk_level ?? null,
+        modules_succeeded: j.modules_succeeded ?? [],
+        modules_failed: j.modules_failed ?? [],
+        modules_skipped: j.modules_skipped ?? [],
+      }));
+
+      res.status(200).json({
+        jobs: lightJobs,
+        total: result.total,
+        page: result.page,
+      });
     } catch (error) {
       next(error);
     }
@@ -160,7 +186,20 @@ router.get(
         throw new NotFoundError('Job record not found or tenant partition mismatch');
       }
 
-      res.status(200).json({ success: true, job: jobWithResults });
+      // Include aggregation fields in detail view
+      const response: any = { success: true, job: jobWithResults };
+      if ((jobWithResults as any).aggregated_score !== undefined) {
+        response.aggregation = {
+          aggregated_score: (jobWithResults as any).aggregated_score,
+          aggregated_verdict: (jobWithResults as any).aggregated_verdict,
+          aggregated_risk_level: (jobWithResults as any).aggregated_risk_level,
+          modules_succeeded: (jobWithResults as any).modules_succeeded ?? [],
+          modules_failed: (jobWithResults as any).modules_failed ?? [],
+          modules_skipped: (jobWithResults as any).modules_skipped ?? [],
+        };
+      }
+
+      res.status(200).json(response);
     } catch (error) {
       next(error);
     }

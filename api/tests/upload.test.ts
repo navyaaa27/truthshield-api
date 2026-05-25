@@ -74,6 +74,16 @@ jest.mock('../src/shared/database/pool.js', () => {
         return Promise.resolve({ rows: [], rowCount: 1 });
       }
 
+      if (sql.startsWith('select') && sql.includes('detection_jobs')) {
+        const jobId = p[0];
+        const orgId = p[1];
+        const job = mockJobs.find((j) => j.id === jobId && j.org_id === orgId);
+        if (job) {
+          return Promise.resolve({ rows: [job], rowCount: 1 });
+        }
+        return Promise.resolve({ rows: [], rowCount: 0 });
+      }
+
       if (sql.startsWith('update detection_jobs')) {
         // p = [s3Key, metadataPatch, jobId, orgId]
         const s3Key = p[0];

@@ -4,51 +4,50 @@ import { logger } from '../../utils/logger.js';
 import { query } from '../database/pool.js';
 import { alertQueue } from './queues.js';
 import { handleMetadataTampering } from '../../modules/detection/metadata-tampering/metadata.handler.js';
+import { handleFakeNews } from '../../modules/detection/fake-news/fakenews.handler.js';
+import { handleStolenContent } from '../../modules/detection/stolen-content/stolen.handler.js';
+import { handleDeepfake } from '../../modules/detection/deepfake/deepfake.handler.js';
+import { aggregateResults, JobAggregation } from '../../modules/jobs/job.aggregator.js';
 
-// Pre-defined fallback handlers to guarantee execution
-const FALLBACK_HANDLERS: Record<
-  string,
-  (jobId: string, orgId: string) => Promise<{
-    score: number;
-    verdict: 'clean' | 'suspicious' | 'manipulated' | 'requires_review';
-    confidence: number;
-    model_version: string;
-    result_data: any;
-    flags: string[];
-  }>
-> = {
-  deepfake: async () => ({
-    score: 85,
-    verdict: 'manipulated',
-    confidence: 0.92,
-    model_version: 'deepfake-detector-v2',
-    result_data: { facial_artifacts: true, eye_blink_rate_anomaly: true },
-    flags: ['artifact_detected', 'inconsistent_lighting'],
-  }),
-  fake_news: async () => ({
-    score: 75,
-    verdict: 'suspicious',
-    confidence: 0.87,
-    model_version: 'fake-news-bert-v1',
-    result_data: { inflammatory_language: true, unreliable_sources_count: 3 },
-    flags: ['clickbait', 'hyperpartisan'],
-  }),
-  stolen_content: async () => ({
-    score: 15,
-    verdict: 'clean',
-    confidence: 0.95,
-    model_version: 'stolen-content-matcher-v3',
-    result_data: { match_percentage: 1.2 },
-    flags: [],
-  }),
-  metadata_tampering: async () => ({
-    score: 5,
-    verdict: 'clean',
-    confidence: 0.99,
-    model_version: 'exif-metadata-verifier-v1',
-    result_data: { capture_device_match: true },
-    flags: [],
-  }),
+// --- Types ---
+
+export interface SkippedModule {
+  module: string;
+  reason: string;
+}
+
+export interface FailedModule {
+  module: string;
+  error: string;
+}
+
+export interface ExecutionPlan {
+  parallel: string[];
+  sequential: string[];
+  skipped: SkippedModule[];
+}
+
+export interface ModuleRunSummary {
+  succeeded: string[];
+  failed: FailedModule[];
+  skipped: SkippedModule[];
+  results: any[];
+}
+
+// Module content type compatibility map
+const MODULE_CONTENT_TYPES: Record<string, string[]> = {
+  metadata_tampering: ['image', 'video', 'file', 'article', 'url'],
+  fake_news: ['article', 'url'],
+  stolen_content: ['image', 'video'],
+  deepfake: ['image', 'video'],
+};
+
+// Module handler registry
+const MODULE_HANDLERS: Record<string, (job: any) => Promise<any>> = {
+  metadata_tampering: handleMetadataTampering,
+  fake_news: handleFakeNews,
+  stolen_content: handleStolenContent,
+  deepfake: handleDeepfake,
 };
 
 export class DetectionWorker extends BaseWorker {
@@ -57,119 +56,207 @@ export class DetectionWorker extends BaseWorker {
     logger.info(`DetectionWorker initialized with concurrency limit: ${concurrency}`);
   }
 
+  /**
+   * Builds an intelligent execution plan that separates parallel-safe modules from sequential ones.
+   */
+  buildExecutionPlan(detectionModules: string[], contentType: string): ExecutionPlan {
+    const parallel: string[] = [];
+    const sequential: string[] = [];
+    const skipped: SkippedModule[] = [];
+
+    for (const mod of detectionModules) {
+      const allowedTypes = MODULE_CONTENT_TYPES[mod];
+
+      // Check content type compatibility
+      if (allowedTypes && !allowedTypes.includes(contentType)) {
+        skipped.push({ module: mod, reason: 'incompatible_content_type' });
+        continue;
+      }
+
+      // Deepfake is sequential only for video (frame-by-frame API calls)
+      if (mod === 'deepfake' && contentType === 'video') {
+        sequential.push(mod);
+        continue;
+      }
+
+      // All other modules are parallel safe
+      parallel.push(mod);
+    }
+
+    logger.info(
+      `[ExecutionPlan] parallel: [${parallel}], sequential: [${sequential}], skipped: [${skipped.map((s) => s.module)}]`
+    );
+
+    return { parallel, sequential, skipped };
+  }
+
+  /**
+   * Executes the plan: runs parallel modules with Promise.allSettled, then sequential ones.
+   */
+  async runExecutionPlan(plan: ExecutionPlan, jobRecord: any): Promise<ModuleRunSummary> {
+    const succeeded: string[] = [];
+    const failed: FailedModule[] = [];
+    const results: any[] = [];
+
+    // --- Run parallel modules ---
+    if (plan.parallel.length > 0) {
+      const parallelPromises = plan.parallel.map((mod) =>
+        this.runSingleModule(mod, jobRecord).then(
+          (result) => ({ mod, result, status: 'fulfilled' as const }),
+          (error) => ({ mod, error, status: 'rejected' as const })
+        )
+      );
+
+      const outcomes = await Promise.allSettled(parallelPromises);
+
+      for (const outcome of outcomes) {
+        if (outcome.status === 'fulfilled') {
+          const val = outcome.value;
+          if (val.status === 'fulfilled') {
+            succeeded.push(val.mod);
+            results.push(val.result);
+            logger.info(`Module '${val.mod}' completed successfully (Score: ${val.result?.score ?? 'N/A'})`);
+          } else {
+            const errMsg = (val as any).error?.message || 'Unknown error';
+            failed.push({ module: val.mod, error: errMsg });
+            logger.error(`Module '${val.mod}' failed: ${errMsg}`);
+          }
+        }
+      }
+    }
+
+    // --- Run sequential modules one at a time ---
+    for (const mod of plan.sequential) {
+      try {
+        const result = await this.runSingleModule(mod, jobRecord);
+        succeeded.push(mod);
+        results.push(result);
+        logger.info(`Module '${mod}' completed successfully (Score: ${result?.score ?? 'N/A'})`);
+      } catch (err: any) {
+        failed.push({ module: mod, error: err.message });
+        logger.error(`Module '${mod}' failed: ${err.message}`);
+      }
+    }
+
+    return { succeeded, failed, skipped: plan.skipped, results };
+  }
+
+  /**
+   * Runs a single detection module handler.
+   */
+  private async runSingleModule(mod: string, jobRecord: any): Promise<any> {
+    const handler = MODULE_HANDLERS[mod];
+    if (handler) {
+      return handler(jobRecord);
+    }
+
+    // Dynamic import fallback
+    try {
+      const handlerModule = await import(`../../modules/detection/handlers/${mod}.js`);
+      if (handlerModule && typeof handlerModule.run === 'function') {
+        return handlerModule.run(jobRecord.id, jobRecord.org_id);
+      }
+    } catch {
+      // Ignore import failures
+    }
+
+    throw new Error(`No handler found for module: ${mod}`);
+  }
+
+  /**
+   * Main job processing method — builds execution plan, runs modules, aggregates results.
+   */
   async process(job: Job): Promise<void> {
     const { jobId, orgId, detectionModules } = job.data;
 
     logger.info(`Starting detection job ${jobId} processing under Org: ${orgId}`);
 
-    // 1. Update job state to 'processing' (starts the began timer)
+    // 1. Update job state to 'processing'
     await this.updateJobStatus(jobId, 'processing');
 
-    const results: any[] = [];
-    let highRiskDetected = false;
+    // 2. Fetch the job record
+    const jobRes = await query(`SELECT * FROM detection_jobs WHERE id = $1`, [jobId]);
+    const jobRecord = jobRes.rows[0];
 
-    // 2. Iterate through each requested detection module
-    for (const mod of detectionModules) {
-      try {
-        if (mod === 'metadata_tampering') {
-          try {
-            const jobRes = await query(
-              `SELECT * FROM detection_jobs WHERE id = $1`,
-              [jobId]
-            );
-            const jobRecord = jobRes.rows[0];
-            if (!jobRecord || !jobRecord.s3_key) {
-              throw new Error(`Job not found or missing s3Key: ${jobId}`);
-            }
-            const savedResult = await handleMetadataTampering(jobRecord);
-            results.push(savedResult);
-            if (savedResult.score > 60) {
-              highRiskDetected = true;
-            }
-            logger.info(`Module 'metadata_tampering' completed (Score: ${savedResult.score})`);
-            continue;
-          } catch (err: any) {
-            logger.warn(`Real metadata_tampering analyzer failed/skipped, trying fallback: ${err.message}`);
-          }
-        }
-
-        let resultPayload;
-
-        // Attempt dynamic import of custom handler
-        try {
-          const handlerModule = await import(`../../modules/detection/handlers/${mod}.js`);
-          if (handlerModule && typeof handlerModule.run === 'function') {
-            resultPayload = await handlerModule.run(jobId, orgId);
-          } else {
-            throw new Error('Module handler does not export a run function');
-          }
-        } catch {
-          // Fall back to robust pre-built classifiers if custom handler doesn't exist
-          const fallback = FALLBACK_HANDLERS[mod];
-          if (fallback) {
-            resultPayload = await fallback(jobId, orgId);
-          } else {
-            throw new Error(`No processor found for module: ${mod}`);
-          }
-        }
-
-        // Check if score warrants a severity alert (>60)
-        if (resultPayload.score > 60) {
-          highRiskDetected = true;
-        }
-
-        // 3. Save result record in the database
-        const dbRes = await query(
-          `INSERT INTO detection_results (
-            job_id, 
-            org_id, 
-            module, 
-            score, 
-            verdict, 
-            confidence, 
-            model_version, 
-            result_data, 
-            flags
-          ) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9) 
-          RETURNING *`,
-          [
-            jobId,
-            orgId,
-            mod,
-            resultPayload.score,
-            resultPayload.verdict,
-            resultPayload.confidence,
-            resultPayload.model_version,
-            JSON.stringify(resultPayload.result_data),
-            resultPayload.flags,
-          ]
-        );
-        results.push(dbRes.rows[0]);
-        logger.info(`Module '${mod}' scan completed for Job ${jobId} (Score: ${resultPayload.score})`);
-      } catch (err: any) {
-        // Individual module crashes must not halt other modules
-        logger.error(`Module '${mod}' failed on job ${jobId}: ${err.message}`);
-      }
+    if (!jobRecord) {
+      logger.error(`Job not found: ${jobId}`);
+      await this.updateJobStatus(jobId, 'failed');
+      return;
     }
 
-    // 4. Update job state to 'completed'
+    const contentType = jobRecord.content_type || '';
+
+    // 3. Build execution plan
+    const plan = this.buildExecutionPlan(detectionModules, contentType);
+
+    // 4. Run execution plan
+    const summary = await this.runExecutionPlan(plan, jobRecord);
+
+    // 5. Aggregate results
+    const aggregation = aggregateResults(summary.results);
+
+    // 6. Persist aggregation to the detection_jobs table
+    await this.persistAggregation(jobId, aggregation, summary);
+
+    // 7. Update job state to 'completed'
     await this.updateJobStatus(jobId, 'completed');
 
-    // 5. If high risk detected, push notification task to alertQueue
-    if (highRiskDetected) {
+    // 8. Generate alerts if risk is medium or higher
+    if (aggregation.riskLevel !== 'none' && aggregation.riskLevel !== 'low') {
       await alertQueue.add(
         'send-notifications',
         {
           jobId,
           orgId,
-          triggeredModules: results.filter((r) => r.score > 60).map((r) => r.module),
+          aggregation,
+          triggeredModules: summary.succeeded.filter(
+            (mod) => (summary.results.find((r: any) => r.module === mod)?.score ?? 0) > 60
+          ),
         },
-        { jobId } // Idempotent key
+        { jobId }
       );
-      logger.info(`High risk findings. Notification task appended to alertQueue for Job ${jobId}`);
+      logger.info(`Risk level '${aggregation.riskLevel}' — notification queued for Job ${jobId}`);
     }
 
-    logger.info(`Finished processing detection job ${jobId} successfully`);
+    logger.info(
+      `Finished processing Job ${jobId}: ` +
+        `succeeded=[${summary.succeeded}], failed=[${summary.failed.map((f) => f.module)}], ` +
+        `skipped=[${summary.skipped.map((s) => s.module)}], score=${aggregation.overallScore}`
+    );
+  }
+
+  /**
+   * Persists the aggregated scores and module execution summary to the database.
+   */
+  private async persistAggregation(
+    jobId: string,
+    aggregation: JobAggregation,
+    summary: ModuleRunSummary
+  ): Promise<void> {
+    try {
+      await query(
+        `UPDATE detection_jobs SET
+          aggregated_score = $1,
+          aggregated_verdict = $2,
+          aggregated_risk_level = $3,
+          modules_succeeded = $4,
+          modules_failed = $5,
+          modules_skipped = $6,
+          source_metadata = COALESCE(source_metadata, '{}'::jsonb) || $7::jsonb
+        WHERE id = $8`,
+        [
+          aggregation.overallScore,
+          aggregation.overallVerdict,
+          aggregation.riskLevel,
+          summary.succeeded,
+          summary.failed.map((f) => f.module),
+          summary.skipped.map((s) => s.module),
+          JSON.stringify({ aggregation }),
+          jobId,
+        ]
+      );
+    } catch (err: any) {
+      logger.error(`Failed to persist aggregation for job ${jobId}: ${err.message}`);
+    }
   }
 }

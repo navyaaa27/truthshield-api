@@ -36,6 +36,21 @@ const envSchema = z.object({
   ALERT_SCORE_THRESHOLD_MEDIUM: z.coerce.number().default(50),
   ALERT_SCORE_THRESHOLD_HIGH: z.coerce.number().default(75),
   ALERT_SCORE_THRESHOLD_CRITICAL: z.coerce.number().default(90),
+  ANTHROPIC_API_KEY: z.string().default(''),
+  GOOGLE_FACT_CHECK_API_KEY: z.string().default(''),
+  GOOGLE_FACT_CHECK_API_URL: z.string().default('https://factchecktools.googleapis.com/v1alpha1/claims:search'),
+  NEWS_CREDIBILITY_THRESHOLD: z.coerce.number().default(60),
+  FAKE_NEWS_MODEL_VERSION: z.string().default('fake-news-analyzer-v1.0'),
+  PHASH_SIMILARITY_THRESHOLD: z.coerce.number().default(90),
+  CONTENT_CRAWL_TIMEOUT_MS: z.coerce.number().default(8000),
+  DMCA_TEMPLATE_VERSION: z.string().default('v1'),
+  STOLEN_CONTENT_MODEL_VERSION: z.string().default('stolen-content-analyzer-v1.0'),
+  HIVE_MODERATION_API_KEY: z.string().default(''),
+  HIVE_MODERATION_API_URL: z.string().default('https://api.thehive.ai/api/v2'),
+  AWS_REKOGNITION_REGION: z.string().default('us-east-1'),
+  DEEPFAKE_CONFIDENCE_THRESHOLD: z.coerce.number().default(0.65),
+  MAX_VIDEO_FRAMES_TO_ANALYZE: z.coerce.number().default(10),
+  DEEPFAKE_MODEL_VERSION: z.string().default('deepfake-analyzer-v1.0'),
 });
 
 const parsed = envSchema.safeParse(process.env);

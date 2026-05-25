@@ -104,8 +104,14 @@ jest.mock('../src/shared/database/pool.js', () => {
             { column_name: 'completed_at', data_type: 'timestamp with time zone' },
             { column_name: 'created_at', data_type: 'timestamp with time zone' },
             { column_name: 'updated_at', data_type: 'timestamp with time zone' },
+            { column_name: 'aggregated_score', data_type: 'numeric' },
+            { column_name: 'aggregated_verdict', data_type: 'character varying' },
+            { column_name: 'aggregated_risk_level', data_type: 'character varying' },
+            { column_name: 'modules_succeeded', data_type: 'ARRAY' },
+            { column_name: 'modules_failed', data_type: 'ARRAY' },
+            { column_name: 'modules_skipped', data_type: 'ARRAY' },
           ],
-          rowCount: 18,
+          rowCount: 24,
         });
       }
 
