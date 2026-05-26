@@ -3,6 +3,7 @@ import { Alert, AlertFilters, AlertSeverity } from './alert.types.js';
 import { ForbiddenError, NotFoundError } from '../../middleware/errorHandler.js';
 import { logger } from '../../utils/logger.js';
 import { JobAggregation } from '../jobs/job.aggregator.js';
+import { socketEmitter } from '../../shared/websocket/socket.emitter.js';
 
 export class AlertService {
   /**
@@ -71,7 +72,13 @@ export class AlertService {
         [orgId, res.id, jobId, severity, title, summary]
       );
 
-      createdAlerts.push(insertRes.rows[0]);
+      const alert = insertRes.rows[0];
+      createdAlerts.push(alert);
+
+      // Emit WebSocket alerts in real-time
+      socketEmitter.emitNewAlert(orgId, alert);
+      socketEmitter.emitUnreadAlertCount(null, orgId);
+
       logger.info(`Generated ${severity} alert for Job ${jobId} (Score: ${score})`);
     }
 
@@ -109,7 +116,11 @@ export class AlertService {
     );
 
     logger.info(`Alert ${alertId} acknowledged by user ${userId}`);
-    return updatedRes.rows[0];
+    const acknowledgedAlert = updatedRes.rows[0];
+    socketEmitter.emitAlertUpdate(orgId, alertId, acknowledgedAlert);
+    socketEmitter.emitUnreadAlertCount(null, orgId);
+
+    return acknowledgedAlert;
   }
 
   /**
@@ -156,21 +167,21 @@ export class AlertService {
     const { severity, acknowledged, page = 1, limit = 10 } = filters;
     const offset = (page - 1) * limit;
 
-    let baseQuery = `FROM alerts WHERE org_id = $1`;
+    let baseFilter = `WHERE a.org_id = $1`;
     const params: any[] = [orgId];
 
     let paramIdx = 2;
     if (severity) {
-      baseQuery += ` AND severity = $${paramIdx}`;
+      baseFilter += ` AND a.severity = $${paramIdx}`;
       params.push(severity);
       paramIdx++;
     }
 
     if (acknowledged !== undefined) {
       if (acknowledged) {
-        baseQuery += ` AND acknowledged_at IS NOT NULL`;
+        baseFilter += ` AND a.acknowledged_at IS NOT NULL`;
       } else {
-        baseQuery += ` AND acknowledged_at IS NULL`;
+        baseFilter += ` AND a.acknowledged_at IS NULL`;
       }
     }
 
@@ -182,11 +193,26 @@ export class AlertService {
     const unreadCount = unreadRes.rows[0].count;
 
     // Total count for filters
-    const totalRes = await query(`SELECT COUNT(*)::int as count ${baseQuery}`, params);
+    const totalRes = await query(`
+      SELECT COUNT(*)::int as count 
+      FROM alerts a
+      ${baseFilter}
+    `, params);
     const total = totalRes.rows[0].count;
 
     // Fetch paginated results ordered by creation date desc
-    const queryStr = `SELECT * ${baseQuery} ORDER BY created_at DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
+    const queryStr = `
+      SELECT a.*,
+             CASE 
+               WHEN dr.id IS NOT NULL THEN json_build_object('id', dr.id, 'module', dr.module, 'score', dr.score, 'verdict', dr.verdict)
+               ELSE NULL
+             END as result
+      FROM alerts a
+      LEFT JOIN detection_results dr ON a.result_id = dr.id
+      ${baseFilter} 
+      ORDER BY a.created_at DESC 
+      LIMIT $${paramIdx} OFFSET $${paramIdx + 1}
+    `;
     params.push(limit, offset);
 
     const alertsRes = await query(queryStr, params);

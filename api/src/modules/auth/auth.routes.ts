@@ -1,6 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
-import rateLimit from 'express-rate-limit';
 import { AuthService } from './auth.service.js';
 import { refreshTokens } from './token.service.js';
 import { MfaService } from './mfa.service.js';
@@ -8,25 +7,10 @@ import { redis } from '../../shared/redis/index.js';
 import { AppError } from '../../middleware/error.js';
 import { authenticate } from '../../middleware/authenticate.js';
 
+import { authLimiter, registrationLimiter } from '../../middleware/rateLimiter.js';
+import { authSlowDown } from '../../middleware/slowDown.js';
+
 const router = Router();
-
-// Rate limiter policy for Login attempts (Max 5 per 15 minutes)
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: { message: 'Too many login attempts, please try again after 15 minutes' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Rate limiter policy for Registration attempts (Max 3 per hour)
-const registerLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 3,
-  message: { message: 'Too many registration attempts, please try again after an hour' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 // Express validator rules for User registration
 const validateRegister = [
@@ -60,7 +44,7 @@ const validateLogin = [
 // POST /auth/register - Register a new user + organization domain
 router.post(
   '/register',
-  registerLimiter,
+  registrationLimiter,
   validateRegister,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -85,7 +69,8 @@ router.post(
 // POST /auth/login - User credential authentication
 router.post(
   '/login',
-  loginLimiter,
+  authLimiter,
+  authSlowDown,
   validateLogin,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -197,6 +182,7 @@ router.post(
 // POST /auth/mfa/login - MFA Challenge Login verification
 router.post(
   '/mfa/login',
+  authLimiter,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { tempToken, totpCode } = req.body;

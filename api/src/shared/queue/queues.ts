@@ -5,6 +5,7 @@ import { logger } from '../../utils/logger.js';
 export let detectionQueue: Queue;
 export let alertQueue: Queue;
 export let cleanupQueue: Queue;
+export let reportQueue: Queue;
 
 // Setup listeners for each queue
 const setupQueueListeners = (queue: Queue, name: string) => {
@@ -30,14 +31,17 @@ if (process.env.NODE_ENV === 'test' && typeof (Queue as any).mock === 'undefined
   detectionQueue = mockQueue('detectionQueue') as any;
   alertQueue = mockQueue('alertQueue') as any;
   cleanupQueue = mockQueue('cleanupQueue') as any;
+  reportQueue = mockQueue('reportQueue') as any;
 } else {
   detectionQueue = new Queue('detectionQueue', { connection, defaultJobOptions });
   alertQueue = new Queue('alertQueue', { connection, defaultJobOptions });
   cleanupQueue = new Queue('cleanupQueue', { connection, defaultJobOptions });
+  reportQueue = new Queue('report-generation', { connection, defaultJobOptions });
 
   setupQueueListeners(detectionQueue, 'detectionQueue');
   setupQueueListeners(alertQueue, 'alertQueue');
   setupQueueListeners(cleanupQueue, 'cleanupQueue');
+  setupQueueListeners(reportQueue, 'report-generation');
 }
 
 /**

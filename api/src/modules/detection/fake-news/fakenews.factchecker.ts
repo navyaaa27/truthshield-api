@@ -9,6 +9,7 @@ import {
   SourceCorroboration 
 } from './fakenews.types.js';
 import { logger } from '../../../utils/logger.js';
+import { recordExternalApi } from '../../../shared/metrics/metrics.service.js';
 
 export class FactChecker {
   private readonly CREDIBLE_RSS_FEEDS = [
@@ -113,13 +114,15 @@ export class FactChecker {
     const url = env.GOOGLE_FACT_CHECK_API_URL;
 
     try {
-      const response = await axios.get(url, {
-        params: {
-          query,
-          key: env.GOOGLE_FACT_CHECK_API_KEY
-        },
-        timeout: 5000
-      });
+      const response = await recordExternalApi('GoogleFactCheck', 'claims_search', () =>
+        axios.get(url, {
+          params: {
+            query,
+            key: env.GOOGLE_FACT_CHECK_API_KEY
+          },
+          timeout: 5000
+        })
+      );
 
       const checks: GoogleFactCheck[] = [];
       if (response.data && response.data.claims) {
@@ -172,27 +175,29 @@ Return a valid JSON object matching this schema:
 `;
 
     try {
-      const response = await axios.post(
-        'https://api.anthropic.com/v1/messages',
-        {
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          temperature: 0,
-          system: systemPrompt,
-          messages: [
-            {
-              role: 'user',
-              content: userPrompt
+      const response = await recordExternalApi('Anthropic', 'messages_create', () =>
+        axios.post(
+          'https://api.anthropic.com/v1/messages',
+          {
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1000,
+            temperature: 0,
+            system: systemPrompt,
+            messages: [
+              {
+                role: 'user',
+                content: userPrompt
+              }
+            ]
+          },
+          {
+            headers: {
+              'x-api-key': env.ANTHROPIC_API_KEY,
+              'anthropic-version': '2023-06-01',
+              'content-type': 'application/json'
             }
-          ]
-        },
-        {
-          headers: {
-            'x-api-key': env.ANTHROPIC_API_KEY,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json'
           }
-        }
+        )
       );
 
       const content = response.data.content[0].text;
@@ -233,7 +238,9 @@ Return a valid JSON object matching this schema:
     try {
       const feedPromises = this.CREDIBLE_RSS_FEEDS.map(async feedUrl => {
         try {
-          const res = await axios.get(feedUrl, { timeout: 3000 });
+          const res = await recordExternalApi('RSSFeed', feedUrl, () =>
+            axios.get(feedUrl, { timeout: 3000 })
+          );
           const $ = cheerio.load(res.data, { xmlMode: true });
 
           $('item').each((_, item) => {

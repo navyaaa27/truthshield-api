@@ -4,6 +4,9 @@ import { authenticate } from '../../middleware/authenticate.js';
 import { query } from '../../shared/database/pool.js';
 import { ValidationError, AppError, ForbiddenError } from '../../middleware/errorHandler.js';
 import { AssetIndexer } from '../jobs/asset.indexer.js';
+import { UsageService } from '../billing/usage.service.js';
+
+import { planRateLimit } from '../../middleware/planLimiter.js';
 
 const router = Router();
 
@@ -14,6 +17,7 @@ const router = Router();
 router.post(
   '/uploads/presign',
   authenticate,
+  planRateLimit('uploads'),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { fileName, mimeType, fileSizeBytes, jobId } = req.body;
@@ -32,6 +36,12 @@ router.post(
       }
       if (!jobId || typeof jobId !== 'string') {
         throw new ValidationError('Job ID must be a valid UUID');
+      }
+
+      // Enforce billing and subscription limits
+      const checkLimit = await UsageService.checkUsageLimit(orgId, 'uploads');
+      if (!checkLimit.allowed) {
+        throw new AppError('Upload limit exceeded. Please upgrade your plan.', 403, 'LIMIT_EXCEEDED');
       }
 
       // Enforce multi-tenant access check: verify jobId belongs to orgId!
@@ -58,6 +68,9 @@ router.post(
          VALUES ($1, $2, $3, $4, $5)`,
         [orgId, userId, 'ASSET_UPLOAD_INITIATED', 'detection_jobs', jobId]
       );
+
+      // Increment uploads usage
+      await UsageService.incrementUsage(orgId, 'uploads');
 
       res.status(200).json(data);
     } catch (error) {

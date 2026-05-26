@@ -1,3 +1,6 @@
+process.env.BILLING_ENABLED = 'false';
+process.env.ENABLE_SECURITY_MIDDLEWARE = 'true';
+
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import request from 'supertest';
 import { jest } from '@jest/globals';
@@ -11,28 +14,131 @@ let mockUsers: any[] = [];
 let mockOrgs: any[] = [];
 let mockAuditLogs: any[] = [];
 const redisStore = new Map<string, string>();
+const redisOnline = true;
+
+// --- Mock Redis ---
+jest.mock('../../src/shared/redis/redis.client.js', () => {
+  const getFullKey = (key: string) => key.startsWith('ts:') ? key : `ts:${key}`;
+  return {
+    redisClient: {
+      get: jest.fn().mockImplementation(((key: any) => {
+        if (!redisOnline) return Promise.reject(new Error('Redis connection lost'));
+        return Promise.resolve(redisStore.get(getFullKey(key)) || null);
+      }) as any),
+      setex: jest.fn().mockImplementation(((key: any, _ttl: any, value: any) => {
+        if (!redisOnline) return Promise.reject(new Error('Redis connection lost'));
+        redisStore.set(getFullKey(key), value);
+        return Promise.resolve('OK');
+      }) as any),
+      del: jest.fn().mockImplementation(((key: any) => {
+        if (!redisOnline) return Promise.reject(new Error('Redis connection lost'));
+        if (Array.isArray(key)) {
+          key.forEach(k => redisStore.delete(getFullKey(k)));
+        } else {
+          redisStore.delete(getFullKey(key));
+        }
+        return Promise.resolve(1);
+      }) as any),
+      keys: jest.fn().mockImplementation(((pattern: any) => {
+        if (!redisOnline) return Promise.reject(new Error('Redis connection lost'));
+        const matched: string[] = [];
+        const regex = new RegExp('^' + getFullKey(pattern).replace(/\*/g, '.*') + '$');
+        for (const k of redisStore.keys()) {
+          if (regex.test(k)) {
+            matched.push(k);
+          }
+        }
+        return Promise.resolve(matched);
+      }) as any),
+      incr: jest.fn().mockImplementation(((key: any) => {
+        if (!redisOnline) return Promise.reject(new Error('Redis connection lost'));
+        const fullKey = getFullKey(key);
+        const val = parseInt(redisStore.get(fullKey) || '0', 10) + 1;
+        redisStore.set(fullKey, val.toString());
+        return Promise.resolve(val);
+      }) as any),
+      expire: jest.fn().mockImplementation((() => Promise.resolve(1)) as any),
+      ping: jest.fn().mockImplementation(() => {
+        if (!redisOnline) return Promise.reject(new Error('Redis connection lost'));
+        return Promise.resolve('PONG');
+      }),
+      call: jest.fn().mockImplementation(((command: string, ...args: any[]) => {
+        if (!redisOnline) return Promise.reject(new Error('Redis connection lost'));
+        const cmd = command.toLowerCase();
+        if (cmd === 'script' && args[0]?.toLowerCase() === 'load') {
+          return Promise.resolve('fake_sha_hash');
+        }
+        if (cmd === 'evalsha' || cmd === 'eval') {
+          const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+          const fullKey = getFullKey(key);
+          const val = parseInt(redisStore.get(fullKey) || '0', 10) + 1;
+          redisStore.set(fullKey, val.toString());
+          return Promise.resolve([val, 60]);
+        }
+        return Promise.resolve();
+      }) as any),
+      on: jest.fn(),
+    },
+    isRedisHealthy: jest.fn().mockImplementation(() => Promise.resolve(redisOnline)),
+    getRedisLatency: jest.fn().mockImplementation(() => Promise.resolve(redisOnline ? 1 : -1)),
+  };
+});
+
+jest.mock('../../src/shared/redis/index.js', () => {
+  const getFullKey = (key: string) => key.startsWith('ts:') ? key : `ts:${key}`;
+  return {
+    checkRedisHealth: jest.fn().mockImplementation(() => Promise.resolve(redisOnline)),
+    redis: {
+      get: jest.fn().mockImplementation(((key: any) => {
+        if (!redisOnline) return Promise.reject(new Error('Redis connection lost'));
+        return Promise.resolve(redisStore.get(getFullKey(key)) || null);
+      }) as any),
+      set: jest.fn().mockImplementation(((key: any, value: any) => {
+        if (!redisOnline) return Promise.reject(new Error('Redis connection lost'));
+        redisStore.set(getFullKey(key), value);
+        return Promise.resolve('OK');
+      }) as any),
+      del: jest.fn().mockImplementation(((key: any) => {
+        if (!redisOnline) return Promise.reject(new Error('Redis connection lost'));
+        redisStore.delete(getFullKey(key));
+        return Promise.resolve(1);
+      }) as any),
+    },
+  };
+});
 
 // Mock express-rate-limit to simulate rate limiters
 jest.mock('express-rate-limit', () => {
   const actualRateLimit = jest.requireActual('express-rate-limit') as any;
-  return jest.fn().mockImplementation((options: any) => {
+  const mockFn = jest.fn().mockImplementation((options: any) => {
     // login rate limiter (max 5) - we keep it at 5 to trigger 429 after 5 failed attempts
     if (options && options.max === 5) {
-      return actualRateLimit(options);
+      return actualRateLimit({
+        ...options,
+        validate: false,
+      });
     }
     // For other limiters, allow higher threshold during test runs
     return actualRateLimit({
       ...options,
       max: 100,
+      validate: false,
     });
   });
+  (mockFn as any).rateLimit = mockFn;
+  (mockFn as any).default = mockFn;
+  return mockFn;
 });
 
 // Mock DB index health endpoints
 jest.mock('../../src/shared/database/index.js', () => {
   return {
-    checkDatabaseHealth: jest.fn().mockImplementation(() => Promise.resolve(true)),
-    query: jest.fn().mockImplementation(((text: any) => {
+    checkDatabaseHealth: (jest.fn() as any).mockResolvedValue({
+      writePool: { connected: true, poolSize: 5, idleCount: 3, waitingCount: 0 },
+      readPool: { connected: true, poolSize: 5, idleCount: 3, waitingCount: 0 },
+      slowQueriesLastHour: 0,
+    }),
+    query: (jest.fn() as any).mockImplementation(((text: any) => {
       const sql = (text || '').trim().toLowerCase();
 
       if (sql.startsWith('select * from audit_logs')) {
@@ -47,7 +153,7 @@ jest.mock('../../src/shared/database/index.js', () => {
 jest.mock('../../src/shared/database/pool.js', () => {
   return {
     pool: {
-      connect: jest.fn().mockImplementation(() =>
+      connect: (jest.fn() as any).mockImplementation(() =>
         Promise.resolve({
           query: jest.fn().mockImplementation(() => Promise.resolve({ rows: [], rowCount: 0 })),
           release: jest.fn(),
@@ -238,7 +344,17 @@ jest.mock('../../src/shared/database/pool.js', () => {
       };
       return callback(mockClient as any);
     }) as any),
-  };
+    writePool: {
+      query: (jest.fn() as any).mockResolvedValue({ rows: [{ '?column?': 1 }], rowCount: 1 }),
+      totalCount: 5, idleCount: 3, waitingCount: 0, on: jest.fn(),
+    } as any,
+    readPool: {
+      query: (jest.fn() as any).mockResolvedValue({ rows: [{ '?column?': 1 }], rowCount: 1 }),
+      totalCount: 5, idleCount: 3, waitingCount: 0, on: jest.fn(),
+    } as any,
+    getSlowQueriesLastHourCount: (jest.fn() as any).mockReturnValue(0),
+    updatePoolMetrics: jest.fn(),
+  } as any;
 });
 
 // Mock Redis Layer
@@ -270,6 +386,33 @@ jest.mock('../../src/shared/redis/index.js', () => {
     checkRedisHealth: jest.fn().mockImplementation(() => Promise.resolve(true)),
   };
 });
+
+jest.mock('../../src/shared/redis/redis.client.js', () => ({
+  redisClient: {
+    get: jest.fn().mockImplementation(((_key: any) => Promise.resolve(null)) as any),
+    setex: jest.fn().mockImplementation(((_key: any, _ttl: any, _val: any) => Promise.resolve('OK')) as any),
+    del: jest.fn().mockImplementation(((_key: any) => Promise.resolve(1)) as any),
+    keys: jest.fn().mockImplementation((() => Promise.resolve([])) as any),
+    incr: jest.fn().mockImplementation((() => Promise.resolve(1)) as any),
+    expire: jest.fn().mockImplementation((() => Promise.resolve(1)) as any),
+    call: jest.fn().mockImplementation(((command: string, ...args: any[]) => {
+      const cmd = command.toLowerCase();
+      if (cmd === 'script' && args[0]?.toLowerCase() === 'load') {
+        return Promise.resolve('fake_sha_hash');
+      }
+      if (cmd === 'evalsha' || cmd === 'eval') {
+        const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+        const val = parseInt(redisStore.get(key) || '0', 10) + 1;
+        redisStore.set(key, val.toString());
+        return Promise.resolve([val, 60]); 
+      }
+      return Promise.resolve();
+    }) as any),
+    on: jest.fn(),
+  },
+  isRedisHealthy: jest.fn().mockImplementation(() => Promise.resolve(true)),
+  getRedisLatency: jest.fn().mockImplementation(() => Promise.resolve(1)),
+}));
 
 import { app } from '../../src/app.js';
 import { query } from '../../src/shared/database/pool.js';
@@ -346,7 +489,6 @@ describe('TruthShield Phase 1 End-to-End Master Integration Journeys', () => {
           password: 'SecurePassWord123!',
           orgName: 'Journey Two Org',
         });
-      
       const userUuid = registerRes.body.user.id;
       const accessToken = registerRes.body.tokens.accessToken;
 
@@ -541,5 +683,9 @@ describe('TruthShield Phase 1 End-to-End Master Integration Journeys', () => {
         });
       expect(dupRegisterRes.status).toBe(409);
     });
+  });
+
+  afterAll(() => {
+    delete process.env.ENABLE_SECURITY_MIDDLEWARE;
   });
 });

@@ -1,0 +1,61 @@
+<div class="page metadata-page" style="page-break-before: always; box-sizing: border-box; padding: 20mm 15mm; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1e293b; background: #ffffff;">
+  
+  <h2 style="font-size: 22px; font-weight: 800; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-top: 0; margin-bottom: 20px; color: #0f172a; display: flex; justify-content: space-between; align-items: center;">
+    <span>Methodology, Metadata & Legal Disclaimers</span>
+    <span style="font-size: 11px; background: #f1f5f9; color: #475569; padding: 3px 10px; border-radius: 20px; font-weight: 500;">Section 3</span>
+  </h2>
+
+  <!-- Report Metadata Log -->
+  <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+    <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 12px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Technical Run Metadata</h3>
+    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+      <tr style="border-bottom: 1px solid #e2e8f0;">
+        <td style="padding: 8px 0; color: #64748b; font-weight: 600;">System Platform Engine</td>
+        <td style="padding: 8px 0; text-align: right; font-weight: 700; color: #0f172a;">TruthShield Core Engine v2.4.1</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #e2e8f0;">
+        <td style="padding: 8px 0; color: #64748b; font-weight: 600;">Trace Identifier (UUID)</td>
+        <td style="padding: 8px 0; text-align: right; font-family: monospace; font-size: 11px; color: #0f172a;">{{reportId}}</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #e2e8f0;">
+        <td style="padding: 8px 0; color: #64748b; font-weight: 600;">Encryption Scheme</td>
+        <td style="padding: 8px 0; text-align: right; color: #0f172a;">SSE-AES256 (Compliance Storage Compliant)</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #e2e8f0;">
+        <td style="padding: 8px 0; color: #64748b; font-weight: 600;">Audit Time Stamp</td>
+        <td style="padding: 8px 0; text-align: right; color: #0f172a;">{{generatedAt}}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #64748b; font-weight: 600;">Verified Active Sessions</td>
+        <td style="padding: 8px 0; text-align: right; color: #0f172a;">Authenticated user session: {{generatedBy.email}}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Methodology Section -->
+  <div style="margin-bottom: 25px;">
+    <h3 style="margin-top: 0; margin-bottom: 10px; font-size: 13px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Analytical Methodology & Pipeline Architecture</h3>
+    <p style="font-size: 12px; color: #475569; line-height: 1.6; margin: 0 0 10px 0;">
+      TruthShield AI employs multi-stage deep learning classifiers, visual metadata analyzers, and text similarity scanners to aggregate platform integrity.
+      Each individual item is systematically routed through parallel micro-classification services (Deepfake, Fake News, Stolen Content, and Metadata Tampering) generating raw metrics, confidence layers, and standard deviations.
+    </p>
+    <p style="font-size: 12px; color: #475569; line-height: 1.6; margin: 0;">
+      <strong>Human-in-the-Loop Override Policy:</strong>
+      Verdicts residing in the <strong>40% to 70%</strong> score distribution fall within the automated fallback margin of uncertainty. In alignment with SOC2 compliance policies, these items are automatically converted to human review tickets to guarantee complete audit verification.
+    </p>
+  </div>
+
+  <!-- Legal Disclaimers -->
+  <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 20px;">
+    <h3 style="margin-top: 0; margin-bottom: 10px; font-size: 13px; font-weight: 700; color: #b45309; text-transform: uppercase; letter-spacing: 0.5px;">Legal Affirmations & Disclaimers</h3>
+    <p style="font-size: 11px; color: #78350f; line-height: 1.6; margin: 0 0 10px 0;">
+      <strong>Information Purposes Only:</strong>
+      This audit documentation is compiled automatically for corporate record-keeping, intellectual property claim validations, and digital forensics verification.
+      TruthShield AI scores and analysis metrics constitute probabilistic system evaluations. They do not constitute formal legal counsel, binding determinations of copyright ownership, or absolute declarations of illegal intent.
+    </p>
+    <p style="font-size: 11px; color: #78350f; line-height: 1.6; margin: 0;">
+      <strong>Limitation of Liability:</strong>
+      TruthShield, its engineers, and its parent entity hold no liability for actionable operational decisions, legal claims, dmca cease-and-desist filings, or product takedowns enacted on the basis of metrics contained in this report. Final judicial review remains at the sole risk and liability of the corporate entity.
+    </p>
+  </div>
+</div>

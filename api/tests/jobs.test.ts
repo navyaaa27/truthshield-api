@@ -124,7 +124,10 @@ jest.mock('../src/shared/database/pool.js', () => {
       }
 
       // 7. SELECT list jobs (with pagination)
-      if (sql.startsWith('select * from detection_jobs where org_id = $1')) {
+      if (
+        sql.startsWith('select * from detection_jobs where org_id = $1') ||
+        sql.includes('from detection_jobs j')
+      ) {
         const orgId = p[0];
         let filtered = [...mockJobs].filter((j) => j.org_id === orgId);
 
@@ -166,6 +169,30 @@ jest.mock('../src/shared/redis/index.js', () => {
     },
   };
 });
+
+jest.mock('../src/shared/redis/redis.client.js', () => ({
+  redisClient: {
+    get: jest.fn().mockImplementation(() => Promise.resolve(null)),
+    setex: jest.fn().mockImplementation(() => Promise.resolve('OK')),
+    del: jest.fn().mockImplementation(() => Promise.resolve(1)),
+    keys: jest.fn().mockImplementation(() => Promise.resolve([])),
+    incr: jest.fn().mockImplementation(() => Promise.resolve(1)),
+    expire: jest.fn().mockImplementation(() => Promise.resolve(1)),
+    ping: jest.fn().mockImplementation(() => Promise.resolve('PONG')),
+    call: jest.fn().mockImplementation(((command: string, ...args: any[]) => {
+      const cmd = command.toLowerCase();
+      if (cmd === 'script' && args[0]?.toLowerCase() === 'load') {
+        return Promise.resolve('fake_sha_hash');
+      }
+      if (cmd === 'evalsha' || cmd === 'eval') {
+        return Promise.resolve([1, 60]); 
+      }
+      return Promise.resolve();
+    }) as any),
+    on: jest.fn(),
+  },
+  isRedisHealthy: jest.fn().mockImplementation(() => Promise.resolve(true)),
+}));
 
 // Import service, model and app to test
 import { JobModel } from '../src/modules/jobs/job.model.js';

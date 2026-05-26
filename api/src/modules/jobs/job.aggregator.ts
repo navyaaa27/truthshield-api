@@ -1,4 +1,5 @@
 import { logger } from '../../utils/logger.js';
+import { env } from '../../config/env.js';
 
 export interface JobAggregation {
   overallScore: number;
@@ -8,6 +9,7 @@ export interface JobAggregation {
   dominantThreat: string | null;
   riskLevel: 'none' | 'low' | 'medium' | 'high' | 'critical';
   summary: string;
+  flags?: string[];
 }
 
 // Module weights for weighted average calculation
@@ -84,7 +86,49 @@ export function aggregateResults(results: any[]): JobAggregation {
   const riskLevel = calculateRiskLevel(overallScore);
 
   // Determine overall verdict
-  const overallVerdict = calculateVerdict(overallScore);
+  let overallVerdict = calculateVerdict(overallScore);
+
+  // Check if human review is required (only for unreviewed results)
+  const min = env.HUMAN_REVIEW_SCORE_MIN || 40;
+  const max = env.HUMAN_REVIEW_SCORE_MAX || 70;
+
+  const unreviewedResults = results.filter(
+    (r) => !r.reviewed_by && !(r.flags && r.flags.includes('human_review_override'))
+  );
+
+  const verdicts = unreviewedResults.map((r) => r.verdict);
+  const hasClean = verdicts.includes('clean');
+  const hasManipulated = verdicts.includes('manipulated');
+  const hasConflicting = hasClean && hasManipulated;
+  const hasRequiresReview = verdicts.includes('requires_review');
+
+  const anyTriggersRange = unreviewedResults.some((r) => {
+    const s = typeof r.score === 'number' ? r.score : Number(r.score) || 0;
+    return s >= min && s <= max;
+  });
+
+  const humanReviewRequired = anyTriggersRange || hasRequiresReview || hasConflicting;
+  const flags: string[] = [];
+
+  if (humanReviewRequired) {
+    flags.push('human_review_required');
+    overallVerdict = 'requires_review';
+  }
+
+  // If there are human overrides, they represent the absolute ground truth
+  const humanOverrides = results.filter(
+    (r) => r.reviewed_by || (r.flags && r.flags.includes('human_review_override'))
+  );
+  if (humanOverrides.length > 0) {
+    const overriddenVerdicts = humanOverrides.map((o) => o.verdict);
+    if (overriddenVerdicts.includes('manipulated')) {
+      overallVerdict = 'manipulated';
+    } else if (overriddenVerdicts.includes('suspicious')) {
+      overallVerdict = 'suspicious';
+    } else {
+      overallVerdict = 'clean';
+    }
+  }
 
   // Calculate overall confidence as average of module confidences
   const confidences = results
@@ -99,7 +143,7 @@ export function aggregateResults(results: any[]): JobAggregation {
   const summary = buildSummary(results.length, riskLevel, dominantThreat, moduleScores);
 
   logger.info(
-    `[Aggregator] Score: ${overallScore}, Risk: ${riskLevel}, Dominant: ${dominantThreat || 'none'}`
+    `[Aggregator] Score: ${overallScore}, Verdict: ${overallVerdict}, Risk: ${riskLevel}, Dominant: ${dominantThreat || 'none'}`
   );
 
   return {
@@ -110,6 +154,7 @@ export function aggregateResults(results: any[]): JobAggregation {
     dominantThreat,
     riskLevel,
     summary,
+    flags,
   };
 }
 

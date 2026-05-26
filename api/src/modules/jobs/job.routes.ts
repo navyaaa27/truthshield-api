@@ -6,6 +6,10 @@ import { validateRequest } from '../../middleware/validateRequest.js';
 import { JobModel } from './job.model.js';
 import { dispatchJob } from './job.dispatcher.js';
 import { ValidationError, NotFoundError } from '../../middleware/errorHandler.js';
+import { cacheService } from '../../shared/redis/cache.service.js';
+import { CacheKeys } from '../../shared/redis/cache.keys.js';
+
+import { planRateLimit } from '../../middleware/planLimiter.js';
 
 const router = Router();
 
@@ -16,6 +20,7 @@ const router = Router();
 router.post(
   '/jobs',
   authenticate,
+  planRateLimit('jobs'),
   [
     body('contentType')
       .isIn(['video', 'image', 'article', 'url', 'file'])
@@ -55,6 +60,9 @@ router.post(
         sourceUrl,
         priority,
       });
+
+      // Invalidate organization cache to ensure fresh list fetch
+      await cacheService.invalidateOrgCache(orgId);
 
       // 2. Determine upload requirements
       const noUploadNeeded = contentType === 'url' || contentType === 'article';
@@ -129,40 +137,45 @@ router.get(
       const page = parseInt(req.query.page as string || '1', 10);
       const limit = parseInt(req.query.limit as string || '10', 10);
 
-      const result = await JobModel.getJobsByOrg(orgId, {
-        status,
-        contentType,
-        page,
-        limit,
+      const cacheKey = CacheKeys.jobsList(orgId, status || 'all', page, limit);
+
+      const response = await cacheService.getOrSet(cacheKey, 30, async () => {
+        const result = await JobModel.getJobsByOrg(orgId, {
+          status,
+          contentType,
+          page,
+          limit,
+        });
+
+        const lightJobs = result.jobs.map((j: any) => ({
+          id: j.id,
+          org_id: j.org_id,
+          content_type: j.content_type,
+          detection_modules: j.detection_modules,
+          status: j.status,
+          priority: j.priority,
+          source_url: j.source_url,
+          created_at: j.created_at,
+          updated_at: j.updated_at,
+          queued_at: j.queued_at,
+          started_at: j.started_at,
+          completed_at: j.completed_at,
+          aggregated_score: j.aggregated_score ?? null,
+          aggregated_verdict: j.aggregated_verdict ?? null,
+          aggregated_risk_level: j.aggregated_risk_level ?? null,
+          modules_succeeded: j.modules_succeeded ?? [],
+          modules_failed: j.modules_failed ?? [],
+          modules_skipped: j.modules_skipped ?? [],
+        }));
+
+        return {
+          jobs: lightJobs,
+          total: result.total,
+          page: result.page,
+        };
       });
 
-      // Strip full result details from list view — include aggregation only
-      const lightJobs = result.jobs.map((j: any) => ({
-        id: j.id,
-        org_id: j.org_id,
-        content_type: j.content_type,
-        detection_modules: j.detection_modules,
-        status: j.status,
-        priority: j.priority,
-        source_url: j.source_url,
-        created_at: j.created_at,
-        updated_at: j.updated_at,
-        queued_at: j.queued_at,
-        started_at: j.started_at,
-        completed_at: j.completed_at,
-        aggregated_score: j.aggregated_score ?? null,
-        aggregated_verdict: j.aggregated_verdict ?? null,
-        aggregated_risk_level: j.aggregated_risk_level ?? null,
-        modules_succeeded: j.modules_succeeded ?? [],
-        modules_failed: j.modules_failed ?? [],
-        modules_skipped: j.modules_skipped ?? [],
-      }));
-
-      res.status(200).json({
-        jobs: lightJobs,
-        total: result.total,
-        page: result.page,
-      });
+      res.status(200).json(response);
     } catch (error) {
       next(error);
     }
@@ -181,22 +194,38 @@ router.get(
       const { id } = req.params;
       const orgId = (req as any).user.orgId;
 
-      const jobWithResults = await JobModel.getJobWithResults(id, orgId);
-      if (!jobWithResults) {
-        throw new NotFoundError('Job record not found or tenant partition mismatch');
-      }
+      const cacheKey = CacheKeys.jobDetail(orgId, id);
 
-      // Include aggregation fields in detail view
-      const response: any = { success: true, job: jobWithResults };
-      if ((jobWithResults as any).aggregated_score !== undefined) {
-        response.aggregation = {
-          aggregated_score: (jobWithResults as any).aggregated_score,
-          aggregated_verdict: (jobWithResults as any).aggregated_verdict,
-          aggregated_risk_level: (jobWithResults as any).aggregated_risk_level,
-          modules_succeeded: (jobWithResults as any).modules_succeeded ?? [],
-          modules_failed: (jobWithResults as any).modules_failed ?? [],
-          modules_skipped: (jobWithResults as any).modules_skipped ?? [],
-        };
+      const response = await cacheService.getOrSet(cacheKey, 60, async () => {
+        const jobWithResults = await JobModel.getJobWithResults(id, orgId);
+        if (!jobWithResults) {
+          throw new NotFoundError('Job record not found or tenant partition mismatch');
+        }
+
+        const resp: any = { success: true, job: jobWithResults };
+        if ((jobWithResults as any).aggregated_score !== undefined) {
+          resp.aggregation = {
+            aggregated_score: (jobWithResults as any).aggregated_score,
+            aggregated_verdict: (jobWithResults as any).aggregated_verdict,
+            aggregated_risk_level: (jobWithResults as any).aggregated_risk_level,
+            modules_succeeded: (jobWithResults as any).modules_succeeded ?? [],
+            modules_failed: (jobWithResults as any).modules_failed ?? [],
+            modules_skipped: (jobWithResults as any).modules_skipped ?? [],
+          };
+        }
+
+        // Don't cache in-flight jobs
+        const jobStatus = (jobWithResults as any).status;
+        if (jobStatus === 'pending' || jobStatus === 'processing') {
+          return { __skipCache: true, ...resp };
+        }
+        return resp;
+      });
+
+      // If __skipCache was set, invalidate immediately so it's not stored
+      if ((response as any).__skipCache) {
+        await cacheService.delete(cacheKey);
+        delete (response as any).__skipCache;
       }
 
       res.status(200).json(response);

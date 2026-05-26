@@ -1,0 +1,117 @@
+<div class="page executive-summary-page" style="page-break-before: always; box-sizing: border-box; padding: 20mm 15mm; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1e293b; background: #ffffff;">
+  
+  <h2 style="font-size: 22px; font-weight: 800; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-top: 0; margin-bottom: 20px; color: #0f172a; display: flex; justify-content: space-between; align-items: center;">
+    <span>Executive Summary & Strategic Analytics</span>
+    <span style="font-size: 11px; background: #f1f5f9; color: #475569; padding: 3px 10px; border-radius: 20px; font-weight: 500;">Section 1</span>
+  </h2>
+
+  <!-- 2x3 Metric Grid -->
+  <div style="display: flex; flex-wrap: wrap; margin-left: -10px; margin-right: -10px; margin-bottom: 25px;">
+    <!-- Metric 1 -->
+    <div style="width: 33.33%; padding: 10px; box-sizing: border-box;">
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; text-align: center;">
+        <span style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; display: block; margin-bottom: 5px;">Total Jobs Analyzed</span>
+        <strong style="font-size: 26px; color: #0f172a; font-weight: 800;">{{summary.totalJobs}}</strong>
+      </div>
+    </div>
+    <!-- Metric 2 -->
+    <div style="width: 33.33%; padding: 10px; box-sizing: border-box;">
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; text-align: center;">
+        <span style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; display: block; margin-bottom: 5px;">Threats Detected</span>
+        <strong style="font-size: 26px; color: #ef4444; font-weight: 800;">{{summary.threatsDetected}}</strong>
+      </div>
+    </div>
+    <!-- Metric 3 -->
+    <div style="width: 33.33%; padding: 10px; box-sizing: border-box;">
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; text-align: center;">
+        <span style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; display: block; margin-bottom: 5px;">Critical Alerts</span>
+        <strong style="font-size: 26px; color: #b91c1c; font-weight: 800;">{{summary.criticalAlerts}}</strong>
+      </div>
+    </div>
+    <!-- Metric 4 -->
+    <div style="width: 33.33%; padding: 10px; box-sizing: border-box;">
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; text-align: center;">
+        <span style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; display: block; margin-bottom: 5px;">Avg Risk Score</span>
+        <strong style="font-size: 26px; color: #eab308; font-weight: 800;">{{summary.avgScore}}%</strong>
+      </div>
+    </div>
+    <!-- Metric 5 -->
+    <div style="width: 33.33%; padding: 10px; box-sizing: border-box;">
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; text-align: center;">
+        <span style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; display: block; margin-bottom: 5px;">Pending Reviews</span>
+        <strong style="font-size: 26px; color: #3b82f6; font-weight: 800;">{{summary.pendingReviews}}</strong>
+      </div>
+    </div>
+    <!-- Metric 6 -->
+    <div style="width: 33.33%; padding: 10px; box-sizing: border-box;">
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; text-align: center;">
+        <span style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; display: block; margin-bottom: 5px;">Clean Content %</span>
+        <strong style="font-size: 26px; color: #22c55e; font-weight: 800;">{{summary.cleanPct}}%</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pure CSS HTML Trend Chart -->
+  <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+    <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 14px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Activity & Threat Volume Trend</h3>
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; height: 120px; padding: 10px 10px 0 10px; border-bottom: 2px solid #cbd5e1; border-left: 2px solid #cbd5e1; box-sizing: border-box;">
+      {{#each trends}}
+        <div style="flex: 1; margin: 0 4px; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end;">
+          <!-- Active Stack Bar (Jobs Run) -->
+          <div style="width: 100%; display: flex; align-items: flex-end; justify-content: center; height: 100%;">
+            <!-- Total Jobs Run Bar (light blue) -->
+            <div style="width: 12px; background: #93c5fd; border-radius: 3px 3px 0 0; min-height: 4px; height: {{percentageOfMax jobsRun 15}}%; position: relative; margin-right: 2px;">
+              <!-- Tooltip text when hovering/printing -->
+              <span style="position: absolute; top: -18px; font-size: 8px; font-weight: 700; color: #1e3a8a;">{{jobsRun}}</span>
+            </div>
+            <!-- Threats Found Bar (red) -->
+            <div style="width: 12px; background: #ef4444; border-radius: 3px 3px 0 0; min-height: {{#if (gt threatsFound 0)}}4{{else}}0{{/if}}px; height: {{percentageOfMax threatsFound 15}}%; position: relative;">
+              {{#if (gt threatsFound 0)}}
+                <span style="position: absolute; top: -18px; font-size: 8px; font-weight: 700; color: #7f1d1d;">{{threatsFound}}</span>
+              {{/if}}
+            </div>
+          </div>
+          <!-- Date Label -->
+          <span style="font-size: 8px; color: #64748b; font-weight: 600; margin-top: 6px; transform: rotate(-30deg); white-space: nowrap;">{{formatDateLabel date}}</span>
+        </div>
+      {{/each}}
+    </div>
+    <div style="display: flex; justify-content: flex-end; font-size: 10px; color: #64748b; margin-top: 10px; font-weight: 600;">
+      <span style="display: inline-flex; align-items: center; margin-right: 15px;"><span style="display: inline-block; width: 8px; height: 8px; background: #93c5fd; margin-right: 5px; border-radius: 2px;"></span>Total Runs</span>
+      <span style="display: inline-flex; align-items: center;"><span style="display: inline-block; width: 8px; height: 8px; background: #ef4444; margin-right: 5px; border-radius: 2px;"></span>Threats Detected</span>
+    </div>
+  </div>
+
+  <!-- Module Breakdown Table -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+    <h3 style="margin: 0; padding: 15px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 13px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Module Performance Breakdown</h3>
+    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
+      <thead>
+        <tr style="background: #f1f5f9; color: #475569; font-weight: 600; text-transform: uppercase; font-size: 10px;">
+          <th style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Analytical Module</th>
+          <th style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">Total Runs</th>
+          <th style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">Threats Flagged</th>
+          <th style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0; text-align: center;">Average Risk Score</th>
+          <th style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0;">Verdict Distribution (Primary)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each moduleBreakdown}}
+          <tr style="border-bottom: 1px solid #f1f5f9;">
+            <td style="padding: 10px 15px; font-weight: 700; color: #0f172a; text-transform: capitalize;">{{module}}</td>
+            <td style="padding: 10px 15px; text-align: center; color: #475569;">{{totalRuns}}</td>
+            <td style="padding: 10px 15px; text-align: center; font-weight: 700; color: {{#if (gt threatsFound 0)}}#ef4444{{else}}#22c55e{{/if}};">{{threatsFound}}</td>
+            <td style="padding: 10px 15px; text-align: center; font-weight: 700;">{{avgScore}}%</td>
+            <td style="padding: 10px 15px;">
+              <div style="font-size: 10px; color: #64748b;">
+                Clean: <strong style="color: #22c55e;">{{verdictDistribution.clean}}</strong> | 
+                Suspicious: <strong style="color: #eab308;">{{verdictDistribution.suspicious}}</strong> | 
+                Manipulated: <strong style="color: #ef4444;">{{verdictDistribution.manipulated}}</strong>
+              </div>
+            </td>
+          </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </div>
+</div>

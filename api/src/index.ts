@@ -1,3 +1,6 @@
+import { initializeTracing } from './shared/tracing/tracing.js';
+initializeTracing();
+
 import http from 'http';
 import { app } from './app.js';
 import { env } from './config/env.js';
@@ -20,6 +23,14 @@ async function bootstrap() {
     await redis.ping();
     logger.info('Redis connection established successfully.');
 
+    // 2.5 Initialize repeatable scheduled jobs (e.g. hourly SLA checks)
+    const { setupScheduledJobs } = await import('./shared/queue/scheduled.jobs.js');
+    await setupScheduledJobs();
+
+    // 2.7 Initialize WebSocket Server
+    const { initializeWebSocket } = await import('./shared/websocket/socket.server.js');
+    initializeWebSocket(server);
+
     // 3. Start Express HTTP Server
     server.listen(env.PORT, () => {
       logger.info(`🚀 TruthShield API running in [${env.NODE_ENV}] mode on port ${env.PORT}`);
@@ -39,6 +50,12 @@ async function gracefulShutdown(signal: string) {
     logger.info('HTTP server closed.');
 
     try {
+      // Close WebSocket server
+      logger.info('Closing WebSocket server...');
+      const { closeWebSocket } = await import('./shared/websocket/socket.server.js');
+      await closeWebSocket();
+      logger.info('WebSocket server closed.');
+
       // Close Database Pool
       logger.info('Closing database connection pool...');
       await pool.end();

@@ -1,4 +1,5 @@
 import { query } from '../../shared/database/pool.js';
+import { cacheService } from '../../shared/redis/cache.service.js';
 import { ValidationError, NotFoundError } from '../../middleware/errorHandler.js';
 import { DetectionJob, CreateJobDTO, JobWithResults, DetectionResult } from './job.types.js';
 
@@ -87,26 +88,39 @@ export class JobModel {
     const limit = Math.min(Math.max(1, filters.limit || 10), 100);
     const offset = (page - 1) * limit;
 
-    let queryText = `SELECT * FROM detection_jobs WHERE org_id = $1`;
+    let queryText = `
+      SELECT j.*, 
+        latest_result.score as latest_score,
+        latest_result.verdict as latest_verdict
+      FROM detection_jobs j
+      LEFT JOIN LATERAL (
+        SELECT score, verdict 
+        FROM detection_results 
+        WHERE job_id = j.id 
+        ORDER BY created_at DESC 
+        LIMIT 1
+      ) latest_result ON true
+      WHERE j.org_id = $1
+    `;
     let countQueryText = `SELECT COUNT(*) as total FROM detection_jobs WHERE org_id = $1`;
     const queryParams: any[] = [orgId];
 
     if (filters.status) {
       queryParams.push(filters.status);
-      queryText += ` AND status = $${queryParams.length}`;
+      queryText += ` AND j.status = $${queryParams.length}`;
       countQueryText += ` AND status = $${queryParams.length}`;
     }
 
     if (filters.contentType) {
       queryParams.push(filters.contentType);
-      queryText += ` AND content_type = $${queryParams.length}`;
+      queryText += ` AND j.content_type = $${queryParams.length}`;
       countQueryText += ` AND content_type = $${queryParams.length}`;
     }
 
     // Append standard pagination
     const selectParams = [...queryParams];
     selectParams.push(limit);
-    queryText += ` ORDER BY created_at DESC LIMIT $${selectParams.length}`;
+    queryText += ` ORDER BY j.created_at DESC LIMIT $${selectParams.length}`;
     
     selectParams.push(offset);
     queryText += ` OFFSET $${selectParams.length}`;
@@ -185,7 +199,13 @@ export class JobModel {
     updateSql += ` WHERE id = $${params.length} RETURNING *`;
 
     const res = await query(updateSql, params);
-    return res.rows[0];
+    const updatedJob = res.rows[0];
+
+    if (status === 'completed' && updatedJob) {
+      await cacheService.invalidateOrgCache(updatedJob.org_id);
+    }
+
+    return updatedJob;
   }
 
   /**

@@ -113,7 +113,10 @@ jest.mock('../src/shared/database/pool.js', () => {
       }
 
       // 6. SELECT paginated alerts
-      if (sql.includes('select * from alerts') || sql.includes('select * from alerts where')) {
+      if (
+        sql.includes('select * from alerts') || 
+        sql.includes('select a.*')
+      ) {
         const orgId = p[0];
         let filtered = mockAlerts.filter((a) => a.org_id === orgId);
 
@@ -236,6 +239,39 @@ jest.mock('../src/shared/redis/index.js', () => {
     },
   };
 });
+
+jest.mock('../src/shared/redis/redis.client.js', () => ({
+  redisClient: {
+    get: jest.fn().mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
+    setex: jest.fn().mockImplementation(((key: any, _ttl: any, val: any) => {
+      mockRedisStore[key] = val;
+      return Promise.resolve('OK');
+    }) as any),
+    del: jest.fn().mockImplementation(((key: any) => {
+      delete mockRedisStore[key];
+      return Promise.resolve(1);
+    }) as any),
+    keys: jest.fn().mockImplementation((() => Promise.resolve(Object.keys(mockRedisStore))) as any),
+    incr: jest.fn().mockImplementation((() => Promise.resolve(1)) as any),
+    expire: jest.fn().mockImplementation((() => Promise.resolve(1)) as any),
+    call: jest.fn().mockImplementation(((command: string, ...args: any[]) => {
+      const cmd = command.toLowerCase();
+      if (cmd === 'script' && args[0]?.toLowerCase() === 'load') {
+        return Promise.resolve('fake_sha_hash');
+      }
+      if (cmd === 'evalsha' || cmd === 'eval') {
+        const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+        const val = parseInt(mockRedisStore[key] || '0', 10) + 1;
+        mockRedisStore[key] = val.toString();
+        return Promise.resolve([val, 60]); 
+      }
+      return Promise.resolve();
+    }) as any),
+    on: jest.fn(),
+  },
+  isRedisHealthy: jest.fn().mockImplementation(() => Promise.resolve(true)),
+  getRedisLatency: jest.fn().mockImplementation(() => Promise.resolve(1)),
+}));
 
 // Load services & app to test
 import { AlertService } from '../src/modules/alerts/alert.service.js';
@@ -508,7 +544,7 @@ describe('Alert Generation & Notification Service Suite', () => {
     });
 
     it('GET /api/v1/alerts/stats aggregates counts and caches in Redis', async () => {
-      const cacheKey = `alert_stats:${orgIdA}`;
+      const cacheKey = `org:${orgIdA}:alert_stats`;
 
       // 1. Initially, cache is empty. Stats calculated from DB and cached.
       const res1 = await request(app)
@@ -522,7 +558,7 @@ describe('Alert Generation & Notification Service Suite', () => {
       expect(res1.body.unread).toBe(2);
 
       // Verify stats are cached in Redis
-      expect(mockRedisStore[cacheKey]).not.toBeNull();
+      expect(mockRedisStore[cacheKey]).not.toBeUndefined();
 
       // 2. Subsequent call fetches directly from Redis cache
       mockAlerts = []; // clear DB to prove it is reading from cache

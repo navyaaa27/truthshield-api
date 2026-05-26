@@ -9,6 +9,8 @@ import { AppError } from '../../middleware/error.js';
 import { logger } from '../../utils/logger.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
+import { cacheService } from '../../shared/redis/cache.service.js';
+import { CacheKeys } from '../../shared/redis/cache.keys.js';
 
 const router = Router();
 
@@ -32,16 +34,22 @@ router.post(
   },
 );
 
-// GET /organizations/:id - Fetch organization by ID
+// GET /organizations/:id - Fetch organization by ID (cached 5 min)
 router.get(
   '/organizations/:id',
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      const org = await getOrganizationById(id);
-      if (!org) {
-        throw new AppError('Organization not found', 404);
-      }
+      const cacheKey = CacheKeys.orgProfile(id);
+
+      const org = await cacheService.getOrSet(cacheKey, 300, async () => {
+        const result = await getOrganizationById(id);
+        if (!result) {
+          throw new AppError('Organization not found', 404);
+        }
+        return result;
+      });
+
       res.status(200).json(org);
     } catch (error) {
       next(error);
@@ -57,6 +65,10 @@ router.patch(
       const { id } = req.params;
       const updates = req.body;
       const org = await updateOrganization(id, updates);
+
+      // Invalidate org profile cache
+      await cacheService.delete(CacheKeys.orgProfile(id));
+
       res.status(200).json(org);
     } catch (error) {
       next(error);
@@ -71,6 +83,10 @@ router.delete(
     try {
       const { id } = req.params;
       await deactivateOrganization(id);
+
+      // Invalidate org profile cache
+      await cacheService.delete(CacheKeys.orgProfile(id));
+
       res.status(204).send();
     } catch (error) {
       next(error);

@@ -51,6 +51,53 @@ const envSchema = z.object({
   DEEPFAKE_CONFIDENCE_THRESHOLD: z.coerce.number().default(0.65),
   MAX_VIDEO_FRAMES_TO_ANALYZE: z.coerce.number().default(10),
   DEEPFAKE_MODEL_VERSION: z.string().default('deepfake-analyzer-v1.0'),
+  REDIS_TTL_SHORT: z.coerce.number().default(60),
+  REDIS_TTL_MEDIUM: z.coerce.number().default(300),
+  REDIS_TTL_LONG: z.coerce.number().default(3600),
+  REDIS_TTL_DAY: z.coerce.number().default(86400),
+  CACHE_ENABLED: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(true),
+
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60000),
+  RATE_LIMIT_SKIP_TRUSTED_IPS: z.string().default('127.0.0.1,::1'),
+  API_KEY_RATE_LIMIT_PER_MIN: z.coerce.number().default(100),
+  ABUSE_BAN_DURATION_HOURS: z.coerce.number().default(24),
+  SUSPICIOUS_REQUEST_THRESHOLD: z.coerce.number().default(50),
+  ALLOWED_ORIGINS: z.string().default(''),
+  LOG_LEVEL: z.string().default('info'),
+  CLOUDWATCH_LOG_GROUP: z.string().default('/truthshield/api'),
+  CLOUDWATCH_REGION: z.string().default('us-east-1'),
+  METRICS_ENABLED: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(true),
+  METRICS_SECRET: z.string().default('super-secret-metrics-key'),
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().default(''),
+  OTEL_SERVICE_NAME: z.string().default('truthshield-api'),
+  OTEL_ENABLED: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(false),
+
+  HUMAN_REVIEW_SCORE_MIN: z.coerce.number().default(40),
+  HUMAN_REVIEW_SCORE_MAX: z.coerce.number().default(70),
+  HUMAN_REVIEW_SLA_HOURS: z.coerce.number().default(24),
+  HUMAN_REVIEW_NOTIFICATION_EMAIL: z.string().default(''),
+
+  DATABASE_READ_URL: z.string().default(''),
+  DATABASE_POOL_MIN: z.coerce.number().default(2),
+  DATABASE_POOL_MAX: z.coerce.number().default(20),
+  DATABASE_IDLE_TIMEOUT_MS: z.coerce.number().default(30000),
+  DATABASE_CONNECTION_TIMEOUT_MS: z.coerce.number().default(5000),
+  SLOW_QUERY_THRESHOLD_MS: z.coerce.number().default(500),
+  QUERY_LOG_ENABLED: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(false),
+
+  DASHBOARD_CACHE_TTL: z.coerce.number().default(30),
+  DASHBOARD_MAX_FEED_ITEMS: z.coerce.number().default(100),
+  DASHBOARD_STATS_WINDOW_DAYS: z.coerce.number().default(30),
+
+  PDF_REPORT_BUCKET: z.string().default('truthshield-reports'),
+  PDF_GENERATION_TIMEOUT_MS: z.coerce.number().default(30000),
+  REPORT_LOGO_S3_KEY: z.string().default('assets/logo.png'),
+  PDF_WATERMARK_TEXT: z.string().default('CONFIDENTIAL'),
+
+  WEBSOCKET_ENABLED: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(true),
+  WEBSOCKET_CORS_ORIGIN: z.string().default(''),
+  WEBSOCKET_HEARTBEAT_MS: z.coerce.number().default(25000),
+  WEBSOCKET_TIMEOUT_MS: z.coerce.number().default(60000),
 });
 
 const parsed = envSchema.safeParse(process.env);

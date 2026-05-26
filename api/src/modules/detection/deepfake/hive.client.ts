@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 import { env } from '../../../config/env.js';
 import { logger } from '../../../utils/logger.js';
 import { HiveAnalysisResult, HiveClass } from './deepfake.types.js';
+import { recordExternalApi } from '../../../shared/metrics/metrics.service.js';
 
 export class AuthError extends Error {
   constructor(message: string) {
@@ -53,16 +54,18 @@ export class HiveClient {
     });
 
     try {
-      const response = await axios.post(
-        `${this.apiUrl}/task/sync/deepfake_detection`,
-        form,
-        {
-          headers: {
-            Authorization: `Token ${this.apiKey}`,
-            ...form.getHeaders(),
-          },
-          timeout: 30000, // 30 second timeout
-        }
+      const response = await recordExternalApi('Hive', 'deepfake_detection', () =>
+        axios.post(
+          `${this.apiUrl}/task/sync/deepfake_detection`,
+          form,
+          {
+            headers: {
+              Authorization: `Token ${this.apiKey}`,
+              ...form.getHeaders(),
+            },
+            timeout: 30000, // 30 second timeout
+          }
+        )
       );
 
       const duration = Date.now() - startTime;
@@ -97,16 +100,18 @@ export class HiveClient {
     const startTime = Date.now();
 
     try {
-      const response = await axios.post(
-        `${this.apiUrl}/task/sync/deepfake_detection`,
-        { url: imageUrl },
-        {
-          headers: {
-            Authorization: `Token ${this.apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          timeout: 30000,
-        }
+      const response = await recordExternalApi('Hive', 'deepfake_detection_url', () =>
+        axios.post(
+          `${this.apiUrl}/task/sync/deepfake_detection`,
+          { url: imageUrl },
+          {
+            headers: {
+              Authorization: `Token ${this.apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            timeout: 30000,
+          }
+        )
       );
 
       const duration = Date.now() - startTime;

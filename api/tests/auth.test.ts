@@ -1,3 +1,5 @@
+process.env.ENABLE_SECURITY_MIDDLEWARE = 'true';
+
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import request from 'supertest';
 import { jest } from '@jest/globals';
@@ -13,7 +15,7 @@ const redisStore = new Map<string, string>();
 // Mock express-rate-limit dynamically before importing the app
 jest.mock('express-rate-limit', () => {
   const actualRateLimit = jest.requireActual('express-rate-limit') as any;
-  return jest.fn().mockImplementation((options: any) => {
+  const mockFn = jest.fn().mockImplementation((options: any) => {
     // Increase the register limiter max to 100 to allow infinite registration tests
     if (options && options.windowMs === 60 * 60 * 1000) {
       return actualRateLimit({
@@ -24,13 +26,20 @@ jest.mock('express-rate-limit', () => {
     // Keep login limiter max at 5 so the login rate limiting test passes cleanly
     return actualRateLimit(options);
   });
+  (mockFn as any).rateLimit = mockFn;
+  (mockFn as any).default = mockFn;
+  return mockFn;
 });
 
 // Mock DB index health endpoints
 jest.mock('../src/shared/database/index.js', () => {
   return {
-    checkDatabaseHealth: jest.fn().mockImplementation(() => Promise.resolve(true)),
-    query: jest.fn().mockImplementation(() => Promise.resolve({ rows: [], rowCount: 0 })),
+    checkDatabaseHealth: (jest.fn() as any).mockResolvedValue({
+      writePool: { connected: true, poolSize: 5, idleCount: 3, waitingCount: 0 },
+      readPool: { connected: true, poolSize: 5, idleCount: 3, waitingCount: 0 },
+      slowQueriesLastHour: 0,
+    }),
+    query: (jest.fn() as any).mockResolvedValue({ rows: [], rowCount: 0 }),
   };
 });
 
@@ -140,7 +149,19 @@ jest.mock('../src/shared/database/pool.js', () => {
       };
       return callback(mockClient as any);
     }) as any),
-  };
+    writePool: {
+      query: (jest.fn() as any).mockResolvedValue({ rows: [{ '?column?': 1 }], rowCount: 1 }),
+      totalCount: 5, idleCount: 3, waitingCount: 0,
+      on: jest.fn(),
+    } as any,
+    readPool: {
+      query: (jest.fn() as any).mockResolvedValue({ rows: [{ '?column?': 1 }], rowCount: 1 }),
+      totalCount: 5, idleCount: 3, waitingCount: 0,
+      on: jest.fn(),
+    } as any,
+    getSlowQueriesLastHourCount: (jest.fn() as any).mockReturnValue(0),
+    updatePoolMetrics: jest.fn(),
+  } as any;
 });
 
 // Mock Redis Layer
@@ -164,6 +185,33 @@ jest.mock('../src/shared/redis/index.js', () => {
     checkRedisHealth: jest.fn().mockImplementation(() => Promise.resolve(true)),
   };
 });
+
+jest.mock('../src/shared/redis/redis.client.js', () => ({
+  redisClient: {
+    get: jest.fn().mockImplementation(((_key: any) => Promise.resolve(null)) as any),
+    setex: jest.fn().mockImplementation(((_key: any, _ttl: any, _val: any) => Promise.resolve('OK')) as any),
+    del: jest.fn().mockImplementation(((_key: any) => Promise.resolve(1)) as any),
+    keys: jest.fn().mockImplementation((() => Promise.resolve([])) as any),
+    incr: jest.fn().mockImplementation((() => Promise.resolve(1)) as any),
+    expire: jest.fn().mockImplementation((() => Promise.resolve(1)) as any),
+    call: jest.fn().mockImplementation(((command: string, ...args: any[]) => {
+      const cmd = command.toLowerCase();
+      if (cmd === 'script' && args[0]?.toLowerCase() === 'load') {
+        return Promise.resolve('fake_sha_hash');
+      }
+      if (cmd === 'evalsha' || cmd === 'eval') {
+        const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+        const val = parseInt(redisStore.get(key) || '0', 10) + 1;
+        redisStore.set(key, val.toString());
+        return Promise.resolve([val, 60]); 
+      }
+      return Promise.resolve();
+    }) as any),
+    on: jest.fn(),
+  },
+  isRedisHealthy: jest.fn().mockImplementation(() => Promise.resolve(true)),
+  getRedisLatency: jest.fn().mockImplementation(() => Promise.resolve(1)),
+}));
 
 // Now import the app
 import { app } from '../src/app.js';
@@ -329,5 +377,9 @@ describe('TruthShield API Complete Authentication & Rate Limiting Integration Te
       // Verify that at least one request failed with a 429 Too Many Requests code
       expect(statuses).toContain(429);
     });
+  });
+
+  afterAll(() => {
+    delete process.env.ENABLE_SECURITY_MIDDLEWARE;
   });
 });

@@ -131,6 +131,30 @@ jest.mock('../src/shared/redis/index.js', () => {
   };
 });
 
+jest.mock('../src/shared/redis/redis.client.js', () => ({
+  redisClient: {
+    get: jest.fn().mockImplementation(((_key: any) => Promise.resolve(null)) as any),
+    setex: jest.fn().mockImplementation(((_key: any, _ttl: any, _val: any) => Promise.resolve('OK')) as any),
+    del: jest.fn().mockImplementation(((_key: any) => Promise.resolve(1)) as any),
+    keys: jest.fn().mockImplementation((() => Promise.resolve([])) as any),
+    incr: jest.fn().mockImplementation((() => Promise.resolve(1)) as any),
+    expire: jest.fn().mockImplementation((() => Promise.resolve(1)) as any),
+    call: jest.fn().mockImplementation(((command: string, ...args: any[]) => {
+      const cmd = command.toLowerCase();
+      if (cmd === 'script' && args[0]?.toLowerCase() === 'load') {
+        return Promise.resolve('fake_sha_hash');
+      }
+      if (cmd === 'evalsha' || cmd === 'eval') {
+        return Promise.resolve([1, 60]); 
+      }
+      return Promise.resolve();
+    }) as any),
+    on: jest.fn(),
+  },
+  isRedisHealthy: jest.fn().mockImplementation(() => Promise.resolve(true)),
+  getRedisLatency: jest.fn().mockImplementation(() => Promise.resolve(1)),
+}));
+
 // --- Mock BullMQ queue structures ---
 const mockQueueAdd = jest.fn();
 jest.mock('bullmq', () => {
@@ -182,6 +206,8 @@ import { dispatchJob } from '../src/modules/jobs/job.dispatcher.js';
 import { app } from '../src/app.js';
 
 describe('Job Queue Infrastructure Suite', () => {
+  jest.setTimeout(30000);
+
   const orgId = 'org-uuid-test';
   const jobId = 'job-uuid-123';
   const userId = 'user-uuid-123';

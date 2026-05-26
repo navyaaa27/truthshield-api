@@ -6,6 +6,7 @@ import fs from 'fs/promises';
 import { env } from '../../../config/env.js';
 import { logger } from '../../../utils/logger.js';
 import { RekognitionResult, FaceRegion } from './deepfake.types.js';
+import { recordExternalApi } from '../../../shared/metrics/metrics.service.js';
 
 export class RekognitionClient {
   private client: any;
@@ -28,7 +29,9 @@ export class RekognitionClient {
     });
 
     try {
-      const response = await this.client.send(command);
+      const response = await recordExternalApi('AWS_Rekognition', 'detectFaces', () =>
+        this.client.send(command)
+      );
       return this.mapResponse(response);
     } catch (err: any) {
       logger.error(`[Rekognition] detectFaces failed: ${err.message}`);
@@ -53,7 +56,9 @@ export class RekognitionClient {
     });
 
     try {
-      const response = await this.client.send(command);
+      const response = await recordExternalApi('AWS_Rekognition', 'detectFacesFromS3', () =>
+        this.client.send(command)
+      );
       return this.mapResponse(response);
     } catch (err: any) {
       logger.error(`[Rekognition] detectFacesFromS3 failed: ${err.message}`);

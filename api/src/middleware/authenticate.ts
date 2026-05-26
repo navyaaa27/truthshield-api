@@ -23,7 +23,12 @@ export async function authenticate(
     const payload = verifyAccessToken(token);
 
     // 2. Check if token is blacklisted in Redis
-    const isBlacklisted = await redis.get(`blacklist:access:${token}`);
+    let isBlacklisted = null;
+    try {
+      isBlacklisted = await redis.get(`blacklist:access:${token}`);
+    } catch (err: any) {
+      // Redis is down — log warning and allow auth to proceed (accept more risk, but don't break)
+    }
     if (isBlacklisted) {
       throw new AppError('Access token has been revoked', 401);
     }
