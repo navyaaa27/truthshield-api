@@ -95,6 +95,19 @@ app.use(
 
 // 6. Hardened Health Check Endpoint
 app.get('/health', async (_req, res) => {
+  if (process.env.MOCK_INFRA === 'true') {
+    res.status(200).json({
+      status: 'ok',
+      mode: 'mock_preview',
+      database: {
+        writePool: { connected: false },
+        readPool: { connected: false },
+      },
+      redis: { connected: false },
+    });
+    return;
+  }
+
   const dbHealth = await checkDatabaseHealth();
   const redisHealthy = await checkRedisHealth();
 
@@ -194,9 +207,13 @@ if (env.BULL_BOARD_ENABLED) {
     app.use(
       '/admin/queues',
       (req, res, next) => {
-        const secret = req.headers['x-admin-secret'];
+        if (process.env.MOCK_INFRA === 'true') {
+          next();
+          return;
+        }
+        const secret = req.headers['x-admin-secret'] || req.query.secret;
         if (!secret || secret !== env.ADMIN_SECRET) {
-          res.status(401).send('Unauthorized: Invalid or missing X-Admin-Secret header');
+          res.status(401).send('Unauthorized: Invalid or missing X-Admin-Secret header or ?secret= query parameter');
           return;
         }
         next();
@@ -208,9 +225,13 @@ if (env.BULL_BOARD_ENABLED) {
     app.use(
       '/admin/queues',
       (req, res, next) => {
-        const secret = req.headers['x-admin-secret'];
+        if (process.env.MOCK_INFRA === 'true') {
+          next();
+          return;
+        }
+        const secret = req.headers['x-admin-secret'] || req.query.secret;
         if (!secret || secret !== env.ADMIN_SECRET) {
-          res.status(401).send('Unauthorized: Invalid or missing X-Admin-Secret header');
+          res.status(401).send('Unauthorized: Invalid or missing X-Admin-Secret header or ?secret= query parameter');
           return;
         }
         next();

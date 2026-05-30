@@ -16,12 +16,18 @@ const skipSlowDown = (req: any) => {
   return skipTrustedIps(req);
 };
 
-// @ts-ignore
-const store = new RedisStore({
-  // @ts-ignore
-  sendCommand: (...args: string[]) => redisClient.call(...args),
-  prefix: 'ts:sd:auth:',
-});
+const createSlowDownStore = () => {
+  if (process.env.MOCK_INFRA === 'true' || redisClient.status !== 'ready') {
+    return undefined;
+  }
+  return new RedisStore({
+    // @ts-ignore
+    sendCommand: (...args: string[]) => redisClient.call(...args),
+    prefix: 'ts:sd:auth:',
+  });
+};
+
+const store = createSlowDownStore();
 
 export const authSlowDown = slowDown({
   windowMs: 15 * 60 * 1000, // 15 minutes

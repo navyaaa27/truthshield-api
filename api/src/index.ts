@@ -14,22 +14,46 @@ async function bootstrap() {
   try {
     // 1. Verify Database Connection
     logger.info('Connecting to PostgreSQL database...');
-    const dbClient = await pool.connect();
-    dbClient.release();
-    logger.info('PostgreSQL connection established successfully.');
+    if (process.env.MOCK_INFRA !== 'true') {
+      try {
+        const dbClient = await pool.connect();
+        dbClient.release();
+        logger.info('PostgreSQL connection established successfully.');
+      } catch (err: any) {
+        logger.warn(`Could not connect to PostgreSQL: ${err.message}. Server starting in offline mode.`);
+      }
+    } else {
+      logger.warn('MOCK_INFRA is enabled. Skipping PostgreSQL startup verification.');
+    }
 
     // 2. Verify Redis Connection
     logger.info('Connecting to Redis server...');
-    await redis.ping();
-    logger.info('Redis connection established successfully.');
+    if (process.env.MOCK_INFRA !== 'true') {
+      try {
+        await redis.ping();
+        logger.info('Redis connection established successfully.');
+      } catch (err: any) {
+        logger.warn(`Could not connect to Redis: ${err.message}. Server starting in offline mode.`);
+      }
+    } else {
+      logger.warn('MOCK_INFRA is enabled. Skipping Redis startup verification.');
+    }
 
     // 2.5 Initialize repeatable scheduled jobs (e.g. hourly SLA checks)
-    const { setupScheduledJobs } = await import('./shared/queue/scheduled.jobs.js');
-    await setupScheduledJobs();
+    try {
+      const { setupScheduledJobs } = await import('./shared/queue/scheduled.jobs.js');
+      await setupScheduledJobs();
+    } catch (err: any) {
+      logger.warn(`Could not initialize scheduled jobs: ${err.message}`);
+    }
 
     // 2.7 Initialize WebSocket Server
-    const { initializeWebSocket } = await import('./shared/websocket/socket.server.js');
-    initializeWebSocket(server);
+    try {
+      const { initializeWebSocket } = await import('./shared/websocket/socket.server.js');
+      initializeWebSocket(server);
+    } catch (err: any) {
+      logger.warn(`Could not initialize WebSocket server: ${err.message}`);
+    }
 
     // 3. Start Express HTTP Server
     server.listen(env.PORT, () => {

@@ -19,6 +19,10 @@ const skipRateLimiting = (req: Request) => {
 };
 
 const createRedisStore = (prefix: string) => {
+  if (process.env.MOCK_INFRA === 'true' || redisClient.status !== 'ready') {
+    logger.warn(`[RateLimit] Redis is offline or MOCK_INFRA is enabled. Falling back to local in-memory store for prefix: ${prefix}`);
+    return undefined;
+  }
   return new RedisStore({
     // @ts-ignore
     sendCommand: async (...args: string[]) => {
@@ -102,6 +106,7 @@ export const createDynamicPlanLimiter = (prefix: string, windowMs: number) => ra
   keyGenerator: (req: Request) => (req as any).user?.orgId || req.ip || 'unknown',
   store: createRedisStore(prefix),
   skip: skipRateLimiting,
+  validate: { default: false },
   handler: (req, res) => {
     logger.warn(`[RateLimit] Plan limit (${prefix}) exceeded for org: ${(req as any).user?.orgId}`);
     res.status(429).json({

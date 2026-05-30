@@ -15,7 +15,7 @@ if (process.env.NODE_ENV === 'test') {
 }
 
 export async function setupScheduledJobs(): Promise<void> {
-  if (process.env.NODE_ENV === 'test') return;
+  if (process.env.NODE_ENV === 'test' || process.env.MOCK_INFRA === 'true') return;
 
   try {
     // Add hourly SLA check job
@@ -36,7 +36,7 @@ export async function setupScheduledJobs(): Promise<void> {
 }
 
 // Scheduled job worker
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && process.env.MOCK_INFRA !== 'true') {
   new Worker(
     'scheduledQueue',
     async (job: Job) => {

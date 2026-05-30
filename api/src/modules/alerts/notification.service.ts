@@ -1,5 +1,7 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { IncomingWebhook } from '@slack/webhook';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 import { query } from '../../shared/database/pool.js';
 import { env } from '../../config/env.js';
 import { Alert } from './alert.types.js';
@@ -66,57 +68,23 @@ export class NotificationService {
   }
 
   /**
-   * Dispatches plain text + HTML email alerts using nodemailer.
+   * Dispatches HTML email alerts using Resend.
    */
   private static async sendEmailNotification(alert: Alert, org: any): Promise<void> {
     const metadata = org.source_metadata || {};
-    const recipient = metadata.notifications?.emailRecipient || org.email || 'alerts@truthshield.ai';
+    const recipient = metadata.notifications?.emailRecipient || org.contactEmail || org.email || 'alerts@truthshield.ai';
 
-    const transporter = nodemailer.createTransport({
-      host: env.SMTP_HOST || 'localhost',
-      port: env.SMTP_PORT || 587,
-      secure: env.SMTP_PORT === 465,
-      auth: env.SMTP_USER ? {
-        user: env.SMTP_USER,
-        pass: env.SMTP_PASS,
-      } : undefined,
-    });
-
-    const severityUpper = alert.severity.toUpperCase();
-    const dashboardLink = `https://dashboard.truthshield.ai/jobs/${alert.job_id}`;
-
-    const subject = `[TruthShield] ${severityUpper} Alert: ${alert.title}`;
-    const text = `
-TruthShield Security Alert
---------------------------
-Severity: ${severityUpper}
-Title: ${alert.title}
-Summary: ${alert.summary}
-Job ID: ${alert.job_id}
-Module: ${alert.severity} (module match)
-Link to Dashboard: ${dashboardLink}
-`;
-    const html = `
-<div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
-  <h2 style="color: #d9534f;">TruthShield Security Alert</h2>
-  <hr />
-  <p><strong>Severity:</strong> <span style="background: #f0ad4e; color: #fff; padding: 3px 6px; border-radius: 3px;">${severityUpper}</span></p>
-  <p><strong>Title:</strong> ${alert.title}</p>
-  <p><strong>Summary:</strong> ${alert.summary}</p>
-  <p><strong>Job ID:</strong> ${alert.job_id}</p>
-  <p><a href="${dashboardLink}" style="display: inline-block; padding: 10px 20px; background: #0275d8; color: #fff; text-decoration: none; border-radius: 4px;">View in Dashboard</a></p>
-</div>
-`;
-
-    await transporter.sendMail({
-      from: env.SMTP_FROM || 'alerts@truthshield.ai',
-      to: recipient,
-      subject,
-      text,
-      html,
-    });
-
-    logger.info(`Email alert notification successfully dispatched to: ${recipient}`);
+    try {
+      await resend.emails.send({
+        from: env.SMTP_FROM || 'alerts@yourdomain.com',
+        to: recipient,
+        subject: `[TruthShield] ${alert.severity.toUpperCase()} Alert: ${alert.title}`,
+        html: buildAlertEmailHtml(alert)
+      });
+      logger.info(`Email alert notification successfully dispatched via Resend to: ${recipient}`);
+    } catch (error) {
+      logger.error('Email notification failed', { error });
+    }
   }
 
   /**
@@ -191,4 +159,20 @@ Link to Dashboard: ${dashboardLink}
 
     logger.info(`Slack alert notification blocks posted successfully`);
   }
+}
+
+function buildAlertEmailHtml(alert: Alert): string {
+  const severityUpper = alert.severity.toUpperCase();
+  const dashboardLink = `https://dashboard.truthshield.ai/jobs/${alert.job_id}`;
+  return `
+<div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
+  <h2 style="color: #d9534f;">TruthShield Security Alert</h2>
+  <hr />
+  <p><strong>Severity:</strong> <span style="background: #f0ad4e; color: #fff; padding: 3px 6px; border-radius: 3px;">${severityUpper}</span></p>
+  <p><strong>Title:</strong> ${alert.title}</p>
+  <p><strong>Summary:</strong> ${alert.summary}</p>
+  <p><strong>Job ID:</strong> ${alert.job_id}</p>
+  <p><a href="${dashboardLink}" style="display: inline-block; padding: 10px 20px; background: #0275d8; color: #fff; text-decoration: none; border-radius: 4px;">View in Dashboard</a></p>
+</div>
+  `;
 }

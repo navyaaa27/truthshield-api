@@ -22,10 +22,25 @@ export interface DBHealthResult {
   };
 }
 
-/**
- * Assess health metrics and active connections of both read and write pools.
- */
 export async function checkDatabaseHealth(): Promise<DBHealthResult> {
+  if (process.env.MOCK_INFRA === 'true') {
+    return {
+      writePool: {
+        connected: false,
+        poolSize: 0,
+        idleCount: 0,
+        waitingCount: 0,
+      },
+      readPool: {
+        connected: false,
+        poolSize: 0,
+        idleCount: 0,
+        waitingCount: 0,
+      },
+      slowQueriesLastHour: 0,
+    };
+  }
+
   let writeConnected = false;
   try {
     const res = await writePool.query('SELECT 1');

@@ -42,15 +42,19 @@ export function initializeWebSocket(httpServer: http.Server): Server {
   });
 
   // Setup Redis Adapter for multi-instance horizontal scaling
-  try {
-    subClient = redisClient.duplicate();
-    subClient.on('error', (err: any) => {
-      logger.error(`[WebSocket] Redis subClient connection error: ${err.message}`);
-    });
-    io.adapter(createAdapter(redisClient, subClient));
-    logger.info('[WebSocket] Redis adapter initialized successfully for horizontal scalability.');
-  } catch (err: any) {
-    logger.error(`[WebSocket] Failed to initialize Redis adapter: ${err.message}`);
+  if (process.env.MOCK_INFRA !== 'true') {
+    try {
+      subClient = redisClient.duplicate();
+      subClient.on('error', (err: any) => {
+        logger.error(`[WebSocket] Redis subClient connection error: ${err.message}`);
+      });
+      io.adapter(createAdapter(redisClient, subClient));
+      logger.info('[WebSocket] Redis adapter initialized successfully for horizontal scalability.');
+    } catch (err: any) {
+      logger.error(`[WebSocket] Failed to initialize Redis adapter: ${err.message}`);
+    }
+  } else {
+    logger.warn('[WebSocket] MOCK_INFRA is enabled. Skipping Redis adapter setup.');
   }
 
   // Connection Authentication Middleware
