@@ -4,7 +4,6 @@ import { s3Client } from '../../shared/storage/s3.service.js';
 import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
-import nodemailer from 'nodemailer';
 import { env } from '../../config/env.js';
 import { logger } from '../../utils/logger.js';
 import { ValidationError, ForbiddenError, NotFoundError } from '../../middleware/errorHandler.js';
@@ -27,6 +26,9 @@ export class ReportService {
    * Validates compliance and plan limits before enqueuing a PDF generation request.
    */
   async requestReport(request: ReportRequest): Promise<Report> {
+    if (process.env.PDF_ENABLED !== 'true') {
+      return this.requestJsonExport(request);
+    }
     const { orgId, requestedBy, reportType, dateRange } = request;
     const start = new Date(dateRange.startDate);
     const end = new Date(dateRange.endDate);
@@ -86,6 +88,68 @@ export class ReportService {
   }
 
   /**
+   * Validates limits and enqueues a JSON report export request (bypassing Puppeteer).
+   */
+  async requestJsonExport(request: ReportRequest): Promise<Report> {
+    const { orgId, requestedBy, reportType, dateRange } = request;
+    const start = new Date(dateRange.startDate);
+    const end = new Date(dateRange.endDate);
+
+    // 1. Validate date range (maximum 365 days)
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays > 365) {
+      throw new ValidationError('The specified audit report period cannot exceed a maximum duration of 365 days.');
+    }
+
+    // 2. Validate report type availability matching organization subscription plans
+    const orgRes = await query('SELECT * FROM organizations WHERE id = $1', [orgId]);
+    const org = orgRes.rows[0];
+    if (!org) {
+      throw new ValidationError('Target organization context does not exist.');
+    }
+
+    const tier = (org.plan_tier || 'starter').toLowerCase();
+
+    if (tier === 'starter' && reportType !== 'threat_summary') {
+      throw new ForbiddenError('Starter plan organizations are restricted to "threat_summary" report requests only.');
+    }
+
+    if (tier === 'growth' && reportType !== 'threat_summary' && reportType !== 'job_detail') {
+      throw new ForbiddenError('Growth tier organizations are restricted to "threat_summary" or "job_detail" report requests only.');
+    }
+
+    // Insert enqueued report record with 'generating' status
+    const dbRes = await query(
+      `INSERT INTO reports (
+        org_id, 
+        requested_by, 
+        report_type, 
+        status, 
+        date_range_start, 
+        date_range_end, 
+        created_at
+      ) 
+      VALUES ($1, $2, $3, 'generating', $4, $5, NOW()) 
+      RETURNING *`,
+      [orgId, requestedBy, reportType, start, end]
+    );
+
+    const report: Report = dbRes.rows[0];
+
+    // Enqueue BullMQ task
+    await reportQueue.add(
+      'generate-report',
+      { reportId: report.id },
+      { jobId: report.id } // Avoid duplicate ticks
+    );
+
+    logger.info(`JSON Report enqueued successfully: ${report.id} (Type: ${reportType}, Org: ${orgId})`);
+
+    return report;
+  }
+
+  /**
    * Background generation task execution (executed inside BullMQ worker framework).
    */
   async generateReport(reportId: string): Promise<void> {
@@ -111,8 +175,70 @@ export class ReportService {
         reportType: dbReport.report_type,
         dateRange,
         includeScreenshots: false,
-        format: 'pdf',
+        format: process.env.PDF_ENABLED === 'true' ? 'pdf' : 'json',
       });
+
+      if (process.env.PDF_ENABLED !== 'true') {
+        // --- JSON Generation Path ---
+        const jsonBuffer = Buffer.from(JSON.stringify(assembledData, null, 2));
+        const bucket = env.PDF_REPORT_BUCKET || 'truthshield-reports';
+        const s3Key = `${dbReport.org_id}/reports/${reportId}.json`;
+
+        await s3Client.send(
+          new PutObjectCommand({
+            Bucket: bucket,
+            Key: s3Key,
+            Body: jsonBuffer,
+            ContentType: 'application/json',
+            ServerSideEncryption: 'AES256',
+          })
+        );
+
+        // Generate pre-signed URL with 24-hour expiration threshold
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        const command = new GetObjectCommand({ Bucket: bucket, Key: s3Key });
+        const downloadUrl = await getSignedUrl(s3Client, command, { expiresIn: 86400 });
+
+        // 5. Commit report metrics and details back to database
+        await query(
+          `UPDATE reports 
+           SET status = 'ready', 
+               s3_key = $1, 
+               file_size_bytes = $2, 
+               total_pages = $3, 
+               download_url = $4, 
+               expires_at = $5,
+               job_count = $6
+           WHERE id = $7`,
+          [
+            s3Key,
+            jsonBuffer.length,
+            1, // 1 page estimated for JSON data dump
+            downloadUrl,
+            expiresAt,
+            assembledData.jobs.length,
+            reportId,
+          ]
+        );
+
+        logger.info(`[ReportService] Successfully published report JSON: ${reportId}`);
+
+        // Increment reports usage
+        import('../billing/usage.service.js').then((m) => {
+          m.UsageService.incrementUsage(dbReport.org_id, 'reports').catch((e) => {
+            logger.error(`[ReportService] Failed to increment reports usage: ${e.message}`);
+          });
+        });
+
+        // 6. Send finished confirmation email notification to user
+        const userRes = await query('SELECT email FROM users WHERE id = $1', [dbReport.requested_by]);
+        const user = userRes.rows[0];
+
+        if (user) {
+          await this.dispatchEmailNotification(user.email, downloadUrl, expiresAt, true);
+        }
+        return;
+      }
 
       // 3. Compile HTML templates & execute Puppeteer PDF render
       const rawPdfBuffer = await this.renderer.renderReport(assembledData, dbReport.report_type);
@@ -290,32 +416,24 @@ export class ReportService {
   /**
    * NodeMailer dispatcher helper.
    */
-  private async dispatchEmailNotification(recipient: string, downloadUrl: string, expiresAt: Date): Promise<void> {
+  private async dispatchEmailNotification(recipient: string, downloadUrl: string, expiresAt: Date, isJson = false): Promise<void> {
     try {
-      const transporter = nodemailer.createTransport({
-        host: env.SMTP_HOST || 'localhost',
-        port: env.SMTP_PORT || 587,
-        secure: env.SMTP_PORT === 465,
-        auth: env.SMTP_USER ? {
-          user: env.SMTP_USER,
-          pass: env.SMTP_PASS,
-        } : undefined,
-      });
-
+      const { Resend } = await import('resend');
+      const resend = new Resend(process.env.RESEND_API_KEY);
       const expiryStr = expiresAt.toLocaleString();
+      const formatStr = isJson ? 'JSON' : 'PDF';
 
-      await transporter.sendMail({
+      await resend.emails.send({
         from: env.SMTP_FROM || 'reports@truthshield.ai',
         to: recipient,
-        subject: 'Your TruthShield Compliance & Legal PDF Report is ready',
-        text: `Your requested TruthShield PDF report has been generated successfully.\n\nDownload Link: ${downloadUrl}\n\nThis link is highly secure and will expire on ${expiryStr}.`,
+        subject: `Your TruthShield Compliance & Legal ${formatStr} Report is ready`,
         html: `
           <div style="font-family: Arial, sans-serif; padding: 25px; border: 1px solid #e2e8f0; border-radius: 8px; max-width: 600px;">
             <h2 style="color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">TruthShield System Update</h2>
             <p>Hello,</p>
-            <p>We are pleased to inform you that your requested legal & compliance PDF audit report has been compiled and is ready for download.</p>
+            <p>We are pleased to inform you that your requested legal & compliance ${formatStr} audit report has been compiled and is ready for download.</p>
             <p style="margin: 25px 0;">
-              <a href="${downloadUrl}" style="background: #0284c7; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 700;">Download Audit PDF Report</a>
+              <a href="${downloadUrl}" style="background: #0284c7; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 700;">Download Audit ${formatStr} Report</a>
             </p>
             <div style="background: #f8fafc; padding: 15px; border-radius: 6px; font-size: 12px; color: #475569;">
               <strong>Security Policy Alert:</strong> This download path is authenticated and encrypted. The download link will automatically expire on <strong>${expiryStr}</strong>.

@@ -10,7 +10,7 @@ export interface ReportRequest {
   jobIds?: string[];
   includeModules?: string[];
   includeScreenshots: boolean;
-  format: 'pdf';
+  format: 'pdf' | 'json';
 }
 
 export interface ReportMetadata {
