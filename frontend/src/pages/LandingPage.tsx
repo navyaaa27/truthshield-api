@@ -1,165 +1,233 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, ShieldAlert, FileSearch, Fingerprint } from 'lucide-react';
-import Silk from '../components/Silk';
 import './LandingPage.css';
 
-function LandingPage() {
+/* ── Animated scan-line ticker ─────────────────────────── */
+const TICKER_ITEMS = [
+  'DEEPFAKE DETECTED · 94.2% CONFIDENCE',
+  'FACT CHECK COMPLETE · SOURCE VERIFIED',
+  'METADATA TAMPERING · EXIF MISMATCH',
+  'VIDEO ANALYSIS · 847 FRAMES PROCESSED',
+  'DMCA MATCH · 3 SOURCES IDENTIFIED',
+  'AI-GENERATED IMAGE · GAN SIGNATURE FOUND',
+];
+
+function Ticker() {
   return (
-    <div className="landing-container">
-      {/* Background Animation */}
-      <div className="silk-background">
-        <Silk
-          speed={5}
-          scale={1}
-          color="#7C3AED"
-          noiseIntensity={1.5}
-          rotation={0}
-        />
-      </div>
-
-      <div className="content-wrapper">
-        {/* Navigation */}
-        <nav className="navbar">
-          <div className="logo">
-            <Shield className="logo-icon" size={28} />
-            <span>TruthShield AI</span>
-          </div>
-          <div className="nav-links">
-            <a href="#features">Features</a>
-            <a href="#api">API</a>
-          </div>
-          <div className="nav-actions">
-            <Link to="/login" className="btn-login">Log in / Sign up</Link>
-          </div>
-        </nav>
-
-        {/* Hero Section */}
-        <section className="hero-section">
-          <div className="hero-badge">
-            <ShieldAlert size={16} />
-            <span>Enterprise-grade deepfake detection</span>
-          </div>
-          <h1 className="hero-title">
-            Verify the truth<br />instantly.
-          </h1>
-          <p className="hero-subtitle">
-            Detect deepfakes, fact-check claims, and uncover media tampering in real-time. 
-            The world's most powerful AI forensic engine.
-          </p>
-          <div className="hero-actions">
-            <Link to="/login" className="btn-primary">
-              Start Scanning
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
-            </Link>
-          </div>
-        </section>
-
-        {/* Floating UI Mockups Area */}
-        <section className="mockup-section">
-          <div className="mockup-card card-left">
-            <div className="card-header">
-              <span className="dot green"></span>
-              Media Uploaded
-            </div>
-            <div className="card-body">Analyzing pixel forensics...</div>
-          </div>
-          
-          <div className="mockup-card card-center">
-            <div className="card-header">
-              <span className="dot red"></span>
-              Tampering Detected
-            </div>
-            <div className="card-body">
-              <div className="progress-bar">
-                <div className="progress fill-red" style={{ width: '85%' }}></div>
-              </div>
-              <span className="confidence">85% AI Confidence</span>
-            </div>
-          </div>
-
-          <div className="mockup-card card-right">
-            <div className="card-header">
-              <span className="dot green"></span>
-              Fact-check verified
-            </div>
-            <div className="card-body">Sources confirm the statement is accurate.</div>
-          </div>
-        </section>
-
-        {/* Features Staggered Section */}
-        <section id="features" className="features-section">
-          <div className="feature-row">
-            <div className="feature-text">
-              <div className="feature-pill">Deepfake Detection</div>
-              <h2>Instant AI Verification</h2>
-              <p>
-                Upload any image or video. Our multi-model forensic AI scans the pixel data, 
-                error-level analysis, and lighting inconsistencies to determine authenticity.
-              </p>
-              <ul className="feature-checks">
-                <li>✓ Tailored to image & video</li>
-                <li>✓ Real-time analysis</li>
-              </ul>
-            </div>
-            <div className="feature-visual">
-              <div className="glass-panel">
-                <div className="analysis-row">
-                  <span>Facial Artifacts</span>
-                  <div className="bar-bg"><div className="bar-fill red" style={{ width: '92%' }}></div></div>
-                </div>
-                <div className="analysis-row">
-                  <span>Lighting Inconsistency</span>
-                  <div className="bar-bg"><div className="bar-fill yellow" style={{ width: '60%' }}></div></div>
-                </div>
-                <div className="analysis-row">
-                  <span>Compression Noise</span>
-                  <div className="bar-bg"><div className="bar-fill green" style={{ width: '20%' }}></div></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Grid Features */}
-        <section id="api" className="grid-features-section">
-          <div className="grid-header">
-            <div className="feature-pill">API Integration</div>
-            <h2>Protect your digital truth</h2>
-            <p>Integrate our engine directly into your platform and automate moderation.</p>
-          </div>
-          
-          <div className="features-grid">
-            <div className="grid-card">
-              <FileSearch className="grid-icon text-blue" />
-              <h3>Forensic Reports</h3>
-              <p>Get detailed PDF and JSON reports breaking down why media was flagged.</p>
-            </div>
-            <div className="grid-card">
-              <ShieldAlert className="grid-icon text-red" />
-              <h3>Real-time Alerts</h3>
-              <p>Receive webhook notifications instantly when dangerous content is detected.</p>
-            </div>
-            <div className="grid-card">
-              <Fingerprint className="grid-icon text-purple" />
-              <h3>Identity Protection</h3>
-              <p>Scan for known malicious deepfake actors using cross-referenced databases.</p>
-            </div>
-            <div className="grid-card">
-              <Shield className="grid-icon text-green" />
-              <h3>Text Fact-Checking</h3>
-              <p>Automatically verify textual claims against thousands of verified news sources.</p>
-            </div>
-          </div>
-        </section>
-        
-        {/* Footer */}
-        <footer className="footer">
-          <p>© 2026 TruthShield AI. All rights reserved.</p>
-        </footer>
+    <div className="ticker-wrap">
+      <div className="ticker-track">
+        {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
+          <span key={i} className="ticker-item">
+            <span className="ticker-dot" />
+            {item}
+          </span>
+        ))}
       </div>
     </div>
   );
 }
 
-export default LandingPage;
+/* ── Animated grid background ──────────────────────────── */
+function GridBg() {
+  return <div className="grid-bg" aria-hidden="true" />;
+}
+
+/* ── Forensic analysis mockup card ─────────────────────── */
+function AnalysisCard() {
+  return (
+    <div className="analysis-card">
+      <div className="analysis-card__header">
+        <span className="analysis-card__dot red" />
+        <span className="analysis-card__dot amber" />
+        <span className="analysis-card__dot green" />
+        <span className="mono analysis-card__label">forensic_analysis.ts</span>
+      </div>
+
+      <div className="analysis-card__body">
+        <div className="analysis-row">
+          <span className="mono ar-label">facial_artifacts</span>
+          <div className="ar-bar-wrap">
+            <div className="ar-bar" style={{ width: '92%', '--bar-color': 'var(--red)' } as React.CSSProperties} />
+          </div>
+          <span className="mono ar-val red">92%</span>
+        </div>
+        <div className="analysis-row">
+          <span className="mono ar-label">lighting_delta</span>
+          <div className="ar-bar-wrap">
+            <div className="ar-bar" style={{ width: '61%', '--bar-color': 'var(--amber)' } as React.CSSProperties} />
+          </div>
+          <span className="mono ar-val amber">61%</span>
+        </div>
+        <div className="analysis-row">
+          <span className="mono ar-label">compression_noise</span>
+          <div className="ar-bar-wrap">
+            <div className="ar-bar" style={{ width: '18%', '--bar-color': 'var(--green)' } as React.CSSProperties} />
+          </div>
+          <span className="mono ar-val green">18%</span>
+        </div>
+        <div className="analysis-row">
+          <span className="mono ar-label">gan_signature</span>
+          <div className="ar-bar-wrap">
+            <div className="ar-bar" style={{ width: '88%', '--bar-color': 'var(--red)' } as React.CSSProperties} />
+          </div>
+          <span className="mono ar-val red">88%</span>
+        </div>
+      </div>
+
+      <div className="analysis-card__verdict">
+        <span className="tag tag-red">⚠ DEEPFAKE DETECTED</span>
+        <span className="mono" style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>3.2s · claude-3.5 · hive-v2</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Stat counter ───────────────────────────────────────── */
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="stat-item">
+      <span className="stat-value mono">{value}</span>
+      <span className="stat-label">{label}</span>
+    </div>
+  );
+}
+
+/* ── Feature card ───────────────────────────────────────── */
+function FeatureCard({ index, title, desc, tag }: { index: string; title: string; desc: string; tag: string }) {
+  return (
+    <div className="feat-card">
+      <span className="mono feat-index">{index}</span>
+      <div className="feat-card__inner">
+        <span className="tag tag-acid">{tag}</span>
+        <h3 className="feat-title">{title}</h3>
+        <p className="feat-desc">{desc}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ── Page ───────────────────────────────────────────────── */
+export default function LandingPage() {
+  return (
+    <div className="landing">
+      <GridBg />
+
+      {/* ── Nav ─────────────────────────────────────────── */}
+      <nav className="landing-nav">
+        <div className="nav-logo">
+          <span className="nav-logo__mark" aria-hidden="true">◈</span>
+          <span className="nav-logo__text">TruthShield</span>
+          <span className="tag tag-acid" style={{ fontSize: '10px' }}>BETA</span>
+        </div>
+        <div className="nav-links">
+          <a href="#features">Features</a>
+          <a href="#how-it-works">How it works</a>
+        </div>
+        <div className="nav-actions">
+          <Link to="/login" className="btn-ghost">Sign in</Link>
+          <Link to="/login" className="btn-acid">Start free →</Link>
+        </div>
+      </nav>
+
+      {/* ── Hero ────────────────────────────────────────── */}
+      <section className="hero">
+        <div className="hero-eyebrow">
+          <span className="tag tag-acid">
+            <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--acid)', animation: 'pulse 2s infinite' }} />
+            LIVE DETECTION ENGINE
+          </span>
+        </div>
+
+        <h1 className="hero-heading">
+          The truth is<br />
+          <em className="hero-heading__em">verifiable.</em>
+        </h1>
+
+        <p className="hero-sub">
+          Multimodal AI forensics for deepfakes, misinformation, and stolen content.
+          Built for teams that can't afford to be wrong.
+        </p>
+
+        <div className="hero-cta">
+          <Link to="/login" className="btn-acid btn-acid--lg">Run a scan →</Link>
+          <a href="#how-it-works" className="btn-ghost btn-ghost--lg">See how it works</a>
+        </div>
+
+        <div className="hero-stats">
+          <Stat value="99.1%" label="Detection accuracy" />
+          <div className="stat-sep" />
+          <Stat value="3.2s" label="Avg analysis time" />
+          <div className="stat-sep" />
+          <Stat value="50MB" label="Max file size" />
+          <div className="stat-sep" />
+          <Stat value="6" label="AI models fused" />
+        </div>
+      </section>
+
+      {/* ── Ticker ──────────────────────────────────────── */}
+      <Ticker />
+
+      {/* ── Visual demo ─────────────────────────────────── */}
+      <section className="demo-section" id="how-it-works">
+        <div className="demo-layout">
+          <div className="demo-text">
+            <span className="tag tag-acid">FORENSIC ENGINE</span>
+            <h2 className="demo-heading">
+              Every pixel.<br />Every claim.<br />Verified.
+            </h2>
+            <p className="demo-para">
+              Upload any image, video, or paste a text claim. Our multi-model pipeline runs
+              facial artifact detection, GAN signature analysis, error-level analysis, and
+              cross-source fact checking — simultaneously.
+            </p>
+            <ul className="demo-checklist">
+              {['Hive Moderation + AWS Rekognition fusion', 'Claude 3.5 for semantic fact-checking', 'EXIF & metadata forensics', 'Perceptual hash for stolen content'].map(item => (
+                <li key={item}>
+                  <span className="check-icon">✓</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="demo-card-wrap">
+            <AnalysisCard />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Features ────────────────────────────────────── */}
+      <section className="features-section" id="features">
+        <div className="features-header">
+          <span className="tag tag-acid">CAPABILITIES</span>
+          <h2 className="features-heading">One platform. Every threat.</h2>
+        </div>
+        <div className="features-grid">
+          <FeatureCard index="01" tag="IMAGE · VIDEO" title="Deepfake Detection" desc="Multi-model AI scans for facial artifacts, GAN signatures, lighting inconsistencies and compression noise." />
+          <FeatureCard index="02" tag="TEXT · URL" title="Fact Verification" desc="Cross-reference claims against thousands of verified news sources using Claude + Google Fact Check API." />
+          <FeatureCard index="03" tag="HASH · DMCA" title="Stolen Content Radar" desc="Perceptual hash matching identifies copied or reposted media across the open web. Auto-generate DMCA notices." />
+          <FeatureCard index="04" tag="WEBHOOK · EMAIL" title="Real-time Alerts" desc="Get notified the moment dangerous content is detected. Webhooks, Slack, and email — all configurable." />
+          <FeatureCard index="05" tag="REST API" title="API Integration" desc="Embed our forensics engine directly into your platform. Rate-limited, key-authenticated, fully documented." />
+          <FeatureCard index="06" tag="PDF · JSON" title="Forensic Reports" desc="Auto-generated reports with confidence scores, evidence breakdown, and recommended actions." />
+        </div>
+      </section>
+
+      {/* ── CTA Band ────────────────────────────────────── */}
+      <section className="cta-band">
+        <div className="cta-band__inner">
+          <div>
+            <h2 className="cta-heading">Don't publish.<br />Verify first.</h2>
+            <p className="cta-sub">Free to start. No credit card required.</p>
+          </div>
+          <Link to="/login" className="btn-acid btn-acid--lg">Open the dashboard →</Link>
+        </div>
+      </section>
+
+      {/* ── Footer ──────────────────────────────────────── */}
+      <footer className="landing-footer">
+        <span className="mono" style={{ color: 'var(--text-dim)', fontSize: '12px' }}>
+          © 2026 TruthShield AI · Built to protect the information layer
+        </span>
+      </footer>
+    </div>
+  );
+}
