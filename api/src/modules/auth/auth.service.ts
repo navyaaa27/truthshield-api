@@ -24,7 +24,7 @@ function isValidEmail(email: string): boolean {
  * - At least 1 special character
  */
 function isValidPassword(password: string): boolean {
-  if (password.length < 12) return false;
+  if (password.length < 8) return false;
   if (!/[A-Z]/.test(password)) return false;
   if (!/[0-9]/.test(password)) return false;
   if (!/[^A-Za-z0-9]/.test(password)) return false;
@@ -46,7 +46,7 @@ export class AuthService {
     }
     if (!password || !isValidPassword(password)) {
       throw new AppError(
-        'Password must be at least 12 characters and contain 1 uppercase letter, 1 number, and 1 special character',
+        'Password must be at least 8 characters and contain 1 uppercase letter, 1 number, and 1 special character',
         400,
       );
     }

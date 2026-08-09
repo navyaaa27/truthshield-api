@@ -34,6 +34,7 @@ export function verifyAccessToken(token: string): JWTPayload {
   try {
     return jwt.verify(token, env.JWT_SECRET) as JWTPayload;
   } catch (error: any) {
+    console.error('[JWT_VERIFY_ERROR]:', error.message);
     throw new AppError('Invalid or expired access token', 401);
   }
 }

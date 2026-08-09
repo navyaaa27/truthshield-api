@@ -27,8 +27,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = localStorage.getItem('ts_access_token');
     if (!token) { setIsLoading(false); return; }
 
-    api.get('/auth/me')
-      .then((res) => setUser(res.data.user))
+    api.get('/users/me')
+      .then((res) => setUser(res.data.data.user))
       .catch(() => {
         localStorage.removeItem('ts_access_token');
         localStorage.removeItem('ts_refresh_token');
@@ -38,9 +38,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const res = await api.post('/auth/login', { email, password });
-    const { accessToken, refreshToken, user: userData } = res.data;
-    localStorage.setItem('ts_access_token', accessToken);
-    localStorage.setItem('ts_refresh_token', refreshToken);
+    const { tokens, user: userData } = res.data;
+    localStorage.setItem('ts_access_token', tokens.accessToken);
+    localStorage.setItem('ts_refresh_token', tokens.refreshToken);
     setUser(userData);
   };
 

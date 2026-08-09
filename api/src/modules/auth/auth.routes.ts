@@ -15,7 +15,7 @@ const router = Router();
 // Express validator rules for User registration
 const validateRegister = [
   body('email').isEmail().withMessage('Invalid email format'),
-  body('password').isLength({ min: 12 }).withMessage('Password must be at least 12 characters'),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('orgName').notEmpty().withMessage('Organization name is required'),
   (req: Request, res: Response, next: NextFunction): void => {
     const errors = validationResult(req);

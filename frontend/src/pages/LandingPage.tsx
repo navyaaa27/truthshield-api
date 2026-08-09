@@ -211,6 +211,67 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Pricing ────────────────────────────────────────── */}
+      <section className="pricing-section" id="pricing">
+        <div className="features-header">
+          <span className="tag tag-acid">TIERS & PLANS</span>
+          <h2 className="features-heading">Simple, predictable pricing.</h2>
+        </div>
+        <div className="pricing-grid">
+          
+          <div className="pricing-card">
+            <div className="pricing-card__header">
+              <span className="mono plan-name">free_analyst</span>
+              <p className="plan-price">$0<span className="plan-period">/mo</span></p>
+              <p className="plan-desc">For individual researchers and journalists starting out.</p>
+            </div>
+            <ul className="plan-features">
+              <li>10 scans / day limit</li>
+              <li>Standard queue priority</li>
+              <li>Core Deepfake & GAN checks</li>
+            </ul>
+            <Link to="/login" className="btn-ghost" style={{ width: '100%', textAlign: 'center', marginTop: 'auto' }}>
+              Access Console
+            </Link>
+          </div>
+
+          <div className="pricing-card featured">
+            <div className="pricing-card__header">
+              <span className="mono plan-name" style={{ color: 'var(--acid)' }}>pro_investigator</span>
+              <p className="plan-price">$89<span className="plan-period">/mo</span></p>
+              <p className="plan-desc">For active investigators and fast-paced digital newsrooms.</p>
+            </div>
+            <ul className="plan-features">
+              <li>1,000 scans / day limit</li>
+              <li>Priority processing queue</li>
+              <li>Advanced EXIF & metadata forensics</li>
+              <li>Downloadable PDF audit reports</li>
+            </ul>
+            <Link to="/login" className="btn-acid" style={{ width: '100%', textAlign: 'center', marginTop: 'auto' }}>
+              Upgrade Workspace
+            </Link>
+          </div>
+
+          <div className="pricing-card">
+            <div className="pricing-card__header">
+              <span className="mono plan-name">enterprise_newsroom</span>
+              <p className="plan-price">Custom</p>
+              <p className="plan-desc">For large networks requiring bulk processing and custom SLAs.</p>
+            </div>
+            <ul className="plan-features">
+              <li>Unlimited scans / API queries</li>
+              <li>Dedicated custom inference hosts</li>
+              <li>Full Webhook & Slack integration</li>
+              <li>24/7 dedicated engineering support</li>
+            </ul>
+            <Link to="/login" className="btn-ghost" style={{ width: '100%', textAlign: 'center', marginTop: 'auto' }}>
+              Contact Team
+            </Link>
+          </div>
+
+        </div>
+      </section>
+
       {/* ── CTA Band ────────────────────────────────────── */}
       <section className="cta-band">
         <div className="cta-band__inner">
