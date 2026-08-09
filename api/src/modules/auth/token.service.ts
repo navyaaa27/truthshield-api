@@ -4,6 +4,7 @@ import { JWTPayload, TokenPair } from './auth.types.js';
 import { redis } from '../../shared/redis/index.js';
 import { AppError } from '../../middleware/error.js';
 import { query } from '../../shared/database/pool.js';
+import { logger } from '../../utils/logger.js';
 
 /**
  * Generates a signed Access Token (15m expiry) and Refresh Token (7d expiry)
@@ -34,7 +35,7 @@ export function verifyAccessToken(token: string): JWTPayload {
   try {
     return jwt.verify(token, env.JWT_SECRET) as JWTPayload;
   } catch (error: any) {
-    console.error('[JWT_VERIFY_ERROR]:', error.message);
+    logger.warn(`[JWT_VERIFY_ERROR]: ${error.message}`);
     throw new AppError('Invalid or expired access token', 401);
   }
 }
