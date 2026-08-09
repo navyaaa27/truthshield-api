@@ -36,6 +36,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
+  /**
+   * Authenticates user credentials against the REST API.
+   * On success, registers JWT tokens in local storage and updates user profile state.
+   */
   const login = async (email: string, password: string) => {
     const res = await api.post('/auth/login', { email, password });
     const { tokens, user: userData } = res.data;
@@ -44,6 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData);
   };
 
+  /**
+   * Discards the active user session and clears stored tokens.
+   * Redirects the viewport back to the landing page portal.
+   */
   const logout = () => {
     localStorage.removeItem('ts_access_token');
     localStorage.removeItem('ts_refresh_token');
@@ -58,6 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Access hook helper to query current authentication states and session management functions.
+ */
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
