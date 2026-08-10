@@ -12,8 +12,8 @@ import api from '../lib/api';
 import './LoginPage.css';
 
 /* ── Easing ─────────────────────────────────────────────── */
-const SPRING = { type: 'spring', stiffness: 380, damping: 30 };
-const EASE   = { duration: 0.22, ease: [0.16, 1, 0.3, 1] };
+const SPRING = { type: 'spring' as const, stiffness: 380, damping: 30 };
+const EASE   = { duration: 0.22, ease: [0.16, 1, 0.3, 1] as const };
 
 /* ── Live feed ──────────────────────────────────────────── */
 const FEED_EVENTS = [
