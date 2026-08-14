@@ -10,8 +10,12 @@ import { createNamespace, getNamespace } from 'cls-hooked';
 export const clsNamespace = createNamespace('truthshield-cls');
 
 /**
- * Deep-walks an object recursively to redact sensitive keys.
- * Correctly handles circular references using ancestor tracking.
+ * Deep-walks an object recursively to redact sensitive keys such as passwords, tokens, and API keys.
+ * It correctly handles circular references using a WeakSet to track ancestor nodes, preventing infinite recursion.
+ * 
+ * @param obj - The object or primitive to be sanitized.
+ * @param visited - A WeakSet used internally to track visited nodes for circular reference detection.
+ * @returns A new sanitized object, or the original primitive if not an object.
  */
 export function sanitizeForLog(obj: unknown, visited = new WeakSet<any>()): unknown {
   if (obj === null || obj === undefined) {
@@ -254,7 +258,11 @@ export const logger = winston.createLogger({
 });
 
 /**
- * Express middleware to assign X-Request-ID and propagate details inside CLS
+ * Express middleware that intercepts incoming HTTP requests to assign a unique X-Request-ID
+ * and propagates request context (like User ID and Org ID) throughout the application's lifecycle
+ * using Continuation-Local Storage (CLS).
+ * 
+ * @returns An Express middleware function.
  */
 export function createRequestLogger() {
   return (req: Request, res: Response, next: NextFunction): void => {
