@@ -87,7 +87,7 @@ export class DetectionWorker extends BaseWorker {
     }
 
     logger.info(
-      `[ExecutionPlan] parallel: [${parallel}], sequential: [${sequential}], skipped: [${skipped.map((s) => s.module)}]`
+      `[ExecutionPlan] parallel: [${parallel}], sequential: [${sequential}], skipped: [${skipped.map((s) => s.module)}]`,
     );
 
     return { parallel, sequential, skipped };
@@ -96,7 +96,11 @@ export class DetectionWorker extends BaseWorker {
   /**
    * Executes the plan: runs parallel modules with Promise.allSettled, then sequential ones.
    */
-  async runExecutionPlan(plan: ExecutionPlan, jobRecord: any, planTier = 'starter'): Promise<ModuleRunSummary> {
+  async runExecutionPlan(
+    plan: ExecutionPlan,
+    jobRecord: any,
+    planTier = 'starter',
+  ): Promise<ModuleRunSummary> {
     const succeeded: string[] = [];
     const failed: FailedModule[] = [];
     const results: any[] = [];
@@ -145,7 +149,9 @@ export class DetectionWorker extends BaseWorker {
           if (val.status === 'fulfilled') {
             succeeded.push(val.mod);
             results.push(val.result);
-            logger.info(`Module '${val.mod}' completed successfully (Score: ${val.result?.score ?? 'N/A'})`);
+            logger.info(
+              `Module '${val.mod}' completed successfully (Score: ${val.result?.score ?? 'N/A'})`,
+            );
           } else {
             const errMsg = (val as any).error?.message || 'Unknown error';
             failed.push({ module: val.mod, error: errMsg });
@@ -260,7 +266,7 @@ export class DetectionWorker extends BaseWorker {
 
     // Increment jobs usage
     import('../../modules/billing/usage.service.js').then((m) => {
-      m.UsageService.incrementUsage(orgId, 'jobs').catch(err => {
+      m.UsageService.incrementUsage(orgId, 'jobs').catch((err) => {
         logger.error(`[detection.worker] Failed to increment jobs usage: ${err.message}`);
       });
     });
@@ -282,17 +288,19 @@ export class DetectionWorker extends BaseWorker {
           orgId,
           aggregation,
           triggeredModules: summary.succeeded.filter(
-            (mod) => (summary.results.find((r: any) => r.module === mod)?.score ?? 0) > 60
+            (mod) => (summary.results.find((r: any) => r.module === mod)?.score ?? 0) > 60,
           ),
         },
-        { jobId }
+        { jobId },
       );
       logger.info(`Risk level '${aggregation.riskLevel}' — notification queued for Job ${jobId}`);
     }
 
     // 9. Dispatch job.completed webhook if configured in source_metadata
     try {
-      const latestJobRes = await query(`SELECT source_metadata FROM detection_jobs WHERE id = $1`, [jobId]);
+      const latestJobRes = await query(`SELECT source_metadata FROM detection_jobs WHERE id = $1`, [
+        jobId,
+      ]);
       const latestMetadata = latestJobRes.rows[0]?.source_metadata || {};
       if (latestMetadata.webhookUrl) {
         const payload = {
@@ -330,7 +338,7 @@ export class DetectionWorker extends BaseWorker {
     logger.info(
       `Finished processing Job ${jobId}: ` +
         `succeeded=[${summary.succeeded}], failed=[${summary.failed.map((f) => f.module)}], ` +
-        `skipped=[${summary.skipped.map((s) => s.module)}], score=${aggregation.overallScore}`
+        `skipped=[${summary.skipped.map((s) => s.module)}], score=${aggregation.overallScore}`,
     );
   }
 
@@ -340,7 +348,7 @@ export class DetectionWorker extends BaseWorker {
   private async persistAggregation(
     jobId: string,
     aggregation: JobAggregation,
-    summary: ModuleRunSummary
+    summary: ModuleRunSummary,
   ): Promise<void> {
     try {
       await query(
@@ -362,7 +370,7 @@ export class DetectionWorker extends BaseWorker {
           summary.skipped.map((s) => s.module),
           JSON.stringify({ aggregation }),
           jobId,
-        ]
+        ],
       );
     } catch (err: any) {
       logger.error(`Failed to persist aggregation for job ${jobId}: ${err.message}`);

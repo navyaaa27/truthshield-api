@@ -10,7 +10,9 @@ const mockRedisStore: Record<string, string> = {};
 
 jest.mock('../src/shared/redis/redis.client.js', () => ({
   redisClient: {
-    get: jest.fn().mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
+    get: jest
+      .fn()
+      .mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
     setex: jest.fn().mockImplementation(((key: any, _ttl: any, val: any) => {
       mockRedisStore[key] = val;
       return Promise.resolve('OK');
@@ -34,11 +36,15 @@ jest.mock('../src/shared/redis/redis.client.js', () => ({
       }
       if (cmd === 'evalsha' || cmd === 'eval') {
         // Find the key that starts with ts:rl: or ts:sd:
-        const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+        const key =
+          args.find(
+            (arg) =>
+              typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:')),
+          ) || 'unknown_key';
         const val = parseInt(mockRedisStore[key] || '0', 10) + 1;
         mockRedisStore[key] = val.toString();
         // Return [currentHits, timeToReset]
-        return Promise.resolve([val, 60]); 
+        return Promise.resolve([val, 60]);
       }
       return Promise.resolve();
     }) as any),
@@ -50,8 +56,10 @@ jest.mock('../src/shared/redis/redis.client.js', () => ({
 
 jest.mock('../src/shared/redis/cache.service.js', () => ({
   cacheService: {
-    getOrSet: jest.fn().mockImplementation(((_key: any, _ttl: any, fetchFn: any) => fetchFn()) as any),
-  }
+    getOrSet: jest
+      .fn()
+      .mockImplementation(((_key: any, _ttl: any, fetchFn: any) => fetchFn()) as any),
+  },
 }));
 
 jest.mock('../src/modules/organizations/organization.model.js', () => ({
@@ -59,13 +67,10 @@ jest.mock('../src/modules/organizations/organization.model.js', () => ({
     if (id === 'org-starter') return Promise.resolve({ plan_tier: 'starter' });
     if (id === 'org-pro') return Promise.resolve({ plan_tier: 'pro' });
     return Promise.resolve(null);
-  }) as any)
+  }) as any),
 }));
 
-import { 
-  globalLimiter, 
-  authLimiter
-} from '../src/middleware/rateLimiter.js';
+import { globalLimiter, authLimiter } from '../src/middleware/rateLimiter.js';
 import { authSlowDown } from '../src/middleware/slowDown.js';
 import { AbuseDetector, abuseCheck } from '../src/middleware/abuseDetection.js';
 import { planRateLimit } from '../src/middleware/planLimiter.js';
@@ -84,7 +89,9 @@ describe('Rate Limiting & Abuse Prevention System', () => {
     it('authLimiter blocks after 5 attempts', async () => {
       const app = express();
       app.set('trust proxy', true);
-      app.use('/auth', authLimiter, (_req, res) => { res.json({ success: true }); });
+      app.use('/auth', authLimiter, (_req, res) => {
+        res.json({ success: true });
+      });
 
       // Send 5 successful requests
       for (let i = 0; i < 5; i++) {
@@ -102,7 +109,9 @@ describe('Rate Limiting & Abuse Prevention System', () => {
       const app = express();
       app.set('trust proxy', true);
       app.use(globalLimiter);
-      app.get('/api', (_req, res) => { res.json({ success: true }); });
+      app.get('/api', (_req, res) => {
+        res.json({ success: true });
+      });
 
       // Mock redis to simulate >1000 hits
       mockRedisStore['ts:rl:global:5.5.5.5'] = '1000';
@@ -117,20 +126,22 @@ describe('Rate Limiting & Abuse Prevention System', () => {
     it('planRateLimit returns 429 with upgrade message when limit exceeded', async () => {
       const app = express();
       app.set('trust proxy', true);
-      
+
       // Mock authenticate middleware that sets user context
       app.use((req, _res, next) => {
         (req as any).user = { orgId: 'org-starter' };
         next();
       });
-      
-      app.use('/uploads', planRateLimit('uploads'), (_req, res) => { res.json({ success: true }); });
+
+      app.use('/uploads', planRateLimit('uploads'), (_req, res) => {
+        res.json({ success: true });
+      });
 
       // Starter plan limit for uploads is 50. Simulate 50 requests
       mockRedisStore['ts:rl:uploads:org-starter'] = '50';
 
       const res = await request(app).post('/uploads');
-      
+
       expect(res.status).toBe(429);
       expect(res.body.error.code).toBe('PLAN_LIMIT_EXCEEDED');
       expect(res.body.error.message).toBe('Upgrade your plan for higher limits');
@@ -141,13 +152,15 @@ describe('Rate Limiting & Abuse Prevention System', () => {
     it('apiKeyLimiter applies different limits per plan', async () => {
       const app = express();
       app.set('trust proxy', true);
-      
+
       // We'll test the dynamic behavior of the planLimit populated by planRateLimit
       app.use((req, _res, next) => {
         (req as any).user = { orgId: 'org-pro' }; // Pro plan has limit 500
         next();
       });
-      app.use('/api', planRateLimit('api'), (_req, res) => { res.json({ success: true }); });
+      app.use('/api', planRateLimit('api'), (_req, res) => {
+        res.json({ success: true });
+      });
 
       // Pro plan should allow up to 500. Simulate 499 requests
       mockRedisStore['ts:rl:api:org-pro'] = '499';
@@ -164,15 +177,17 @@ describe('Rate Limiting & Abuse Prevention System', () => {
     it('slowDown adds delay after 3 requests', async () => {
       const app = express();
       app.set('trust proxy', true);
-      app.use('/auth', authSlowDown, (_req, res) => { res.json({ success: true }); });
+      app.use('/auth', authSlowDown, (_req, res) => {
+        res.json({ success: true });
+      });
 
       // Mock the store so that the next request is the 4th request
       mockRedisStore['ts:sd:auth:1.1.1.1'] = '3';
-      
+
       const start = Date.now();
       await request(app).get('/auth').set('X-Forwarded-For', '1.1.1.1');
       const duration = Date.now() - start;
-      
+
       // Since it's the 4th request, it should delay for 500ms
       expect(duration).toBeGreaterThanOrEqual(450); // Using 450 to avoid flakiness
     });
@@ -193,7 +208,7 @@ describe('Rate Limiting & Abuse Prevention System', () => {
     it('banIP sets Redis key with correct TTL', async () => {
       await detector.banIP('hacker-ip', 'Scanning', 24);
       expect(mockRedisStore['ts:banned_ip:hacker-ip']).toBeDefined();
-      
+
       // Verify setex was called correctly (via our mock)
       const data = JSON.parse(mockRedisStore['ts:banned_ip:hacker-ip']);
       expect(data.reason).toBe('Scanning');
@@ -204,8 +219,12 @@ describe('Rate Limiting & Abuse Prevention System', () => {
       expect(detector.checkSuspiciousUserAgent('sqlmap/1.0')).toBe(true);
       expect(detector.checkSuspiciousUserAgent('masscan/1.0')).toBe(true);
       expect(detector.checkSuspiciousUserAgent('')).toBe(true);
-      
-      expect(detector.checkSuspiciousUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36')).toBe(false);
+
+      expect(
+        detector.checkSuspiciousUserAgent(
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+        ),
+      ).toBe(false);
     });
 
     it('calculateThreatScore returns 100 for banned IP', () => {
@@ -213,7 +232,7 @@ describe('Rate Limiting & Abuse Prevention System', () => {
         isBanned: true,
         suspiciousUA: false,
         suspiciousPattern: false,
-        failedAuthAttempts: 0
+        failedAuthAttempts: 0,
       });
       expect(score).toBe(100);
     });
@@ -222,7 +241,9 @@ describe('Rate Limiting & Abuse Prevention System', () => {
       const app = express();
       app.set('trust proxy', true);
       app.use(abuseCheck);
-      app.get('/', (_req, res) => { res.json({ success: true }); });
+      app.get('/', (_req, res) => {
+        res.json({ success: true });
+      });
 
       mockRedisStore['ts:banned_ip:1.2.3.4'] = 'true';
 

@@ -83,7 +83,10 @@ jest.mock('../src/shared/database/pool.js', () => {
       }
 
       // Check columns in detection_jobs
-      if (sql.includes("table_name = 'detection_jobs'") || sql.includes("tablename = 'detection_jobs'")) {
+      if (
+        sql.includes("table_name = 'detection_jobs'") ||
+        sql.includes("tablename = 'detection_jobs'")
+      ) {
         return Promise.resolve({
           rows: [
             { column_name: 'id', data_type: 'uuid' },
@@ -116,7 +119,10 @@ jest.mock('../src/shared/database/pool.js', () => {
       }
 
       // Check columns in detection_results
-      if (sql.includes("table_name = 'detection_results'") || sql.includes("tablename = 'detection_results'")) {
+      if (
+        sql.includes("table_name = 'detection_results'") ||
+        sql.includes("tablename = 'detection_results'")
+      ) {
         return Promise.resolve({
           rows: [
             { column_name: 'id', data_type: 'uuid' },
@@ -164,7 +170,10 @@ jest.mock('../src/shared/database/pool.js', () => {
       }
 
       // Check columns in brand_assets
-      if (sql.includes("table_name = 'brand_assets'") || sql.includes("tablename = 'brand_assets'")) {
+      if (
+        sql.includes("table_name = 'brand_assets'") ||
+        sql.includes("tablename = 'brand_assets'")
+      ) {
         return Promise.resolve({
           rows: [
             { column_name: 'id', data_type: 'uuid' },

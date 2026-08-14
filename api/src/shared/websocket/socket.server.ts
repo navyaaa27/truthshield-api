@@ -16,7 +16,7 @@ async function validateJobOwnership(jobId: string, orgId: string): Promise<boole
   try {
     const res = await query('SELECT org_id FROM detection_jobs WHERE id = $1', [jobId]);
     if (res.rowCount === 0) return false;
-    
+
     const dbOrgId = res.rows[0].org_id;
     return dbOrgId === orgId;
   } catch (err: any) {
@@ -109,7 +109,9 @@ export function initializeWebSocket(httpServer: http.Server): Server {
             socket.join(`job:${jobId}`);
             logger.debug(`[WebSocket] Socket ${socket.id} joined room job:${jobId}`);
           } else {
-            logger.warn(`[WebSocket] Unauthorized subscribe attempt to job:${jobId} by org:${orgId}`);
+            logger.warn(
+              `[WebSocket] Unauthorized subscribe attempt to job:${jobId} by org:${orgId}`,
+            );
           }
         })
         .catch((err) => {

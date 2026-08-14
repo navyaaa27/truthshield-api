@@ -72,7 +72,7 @@ export function errorHandler(
   err: Error | AppError,
   req: Request,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ): void {
   const requestId = (req.headers['x-request-id'] as string) || '';
 

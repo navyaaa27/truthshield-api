@@ -175,7 +175,8 @@ const transports: winston.transport[] = [
 ];
 
 // Add CloudWatch Transport in production if valid credentials are found
-const hasAwsCreds = (env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY) || process.env.AWS_ACCESS_KEY_ID;
+const hasAwsCreds =
+  (env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY) || process.env.AWS_ACCESS_KEY_ID;
 if (env.NODE_ENV === 'production' && hasAwsCreds) {
   const dateStr = new Date().toISOString().split('T')[0];
   transports.push(
@@ -191,7 +192,7 @@ if (env.NODE_ENV === 'production' && hasAwsCreds) {
           secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
         },
       },
-    }) as any
+    }) as any,
   );
 }
 
@@ -210,7 +211,8 @@ const format = winston.format.combine(
           const userStr = info.userId ? ` [userId:${info.userId}]` : '';
           const jobStr = info.jobId ? ` [jobId:${info.jobId}]` : '';
           const modStr = info.module ? ` [module:${info.module}]` : '';
-          const durationStr = info.durationMs !== undefined ? ` [duration:${info.durationMs}ms]` : '';
+          const durationStr =
+            info.durationMs !== undefined ? ` [duration:${info.durationMs}ms]` : '';
 
           // Extract extra metadata
           const meta = { ...info } as any;
@@ -240,8 +242,8 @@ const format = winston.format.combine(
           }
 
           return `[${info.timestamp}] [${info.level}]${reqStr}${orgStr}${userStr}${jobStr}${modStr}${durationStr}: ${info.message}${errStr}${metaStr}`;
-        })
-      )
+        }),
+      ),
 );
 
 export const logger = winston.createLogger({
@@ -267,7 +269,7 @@ export function createRequestLogger() {
     // Bind values inside the active CLS Context
     clsNamespace.run(() => {
       clsNamespace.set('requestId', requestId);
-      
+
       // Auto-extract user context if already populated (or placeholder)
       if ((req as any).user) {
         clsNamespace.set('orgId', (req as any).user.orgId);

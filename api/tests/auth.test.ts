@@ -151,12 +151,16 @@ jest.mock('../src/shared/database/pool.js', () => {
     }) as any),
     writePool: {
       query: (jest.fn() as any).mockResolvedValue({ rows: [{ '?column?': 1 }], rowCount: 1 }),
-      totalCount: 5, idleCount: 3, waitingCount: 0,
+      totalCount: 5,
+      idleCount: 3,
+      waitingCount: 0,
       on: jest.fn(),
     } as any,
     readPool: {
       query: (jest.fn() as any).mockResolvedValue({ rows: [{ '?column?': 1 }], rowCount: 1 }),
-      totalCount: 5, idleCount: 3, waitingCount: 0,
+      totalCount: 5,
+      idleCount: 3,
+      waitingCount: 0,
       on: jest.fn(),
     } as any,
     getSlowQueriesLastHourCount: (jest.fn() as any).mockReturnValue(0),
@@ -189,7 +193,9 @@ jest.mock('../src/shared/redis/index.js', () => {
 jest.mock('../src/shared/redis/redis.client.js', () => ({
   redisClient: {
     get: jest.fn().mockImplementation(((_key: any) => Promise.resolve(null)) as any),
-    setex: jest.fn().mockImplementation(((_key: any, _ttl: any, _val: any) => Promise.resolve('OK')) as any),
+    setex: jest
+      .fn()
+      .mockImplementation(((_key: any, _ttl: any, _val: any) => Promise.resolve('OK')) as any),
     del: jest.fn().mockImplementation(((_key: any) => Promise.resolve(1)) as any),
     keys: jest.fn().mockImplementation((() => Promise.resolve([])) as any),
     incr: jest.fn().mockImplementation((() => Promise.resolve(1)) as any),
@@ -200,10 +206,14 @@ jest.mock('../src/shared/redis/redis.client.js', () => ({
         return Promise.resolve('fake_sha_hash');
       }
       if (cmd === 'evalsha' || cmd === 'eval') {
-        const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+        const key =
+          args.find(
+            (arg) =>
+              typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:')),
+          ) || 'unknown_key';
         const val = parseInt(redisStore.get(key) || '0', 10) + 1;
         redisStore.set(key, val.toString());
-        return Promise.resolve([val, 60]); 
+        return Promise.resolve([val, 60]);
       }
       return Promise.resolve();
     }) as any),
@@ -235,22 +245,20 @@ describe('TruthShield API Complete Authentication & Rate Limiting Integration Te
 
   describe('Authentication Workflow Integration Tests', () => {
     it('should successfully register a new user + org and return valid JWT tokens', async () => {
-      const response = await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          email: 'founder@truthshield.ai',
-          password: 'SecurePassWord123!',
-          orgName: 'TruthShield AI Corp',
-        });
+      const response = await request(app).post('/api/v1/auth/register').send({
+        email: 'founder@truthshield.ai',
+        password: 'SecurePassWord123!',
+        orgName: 'TruthShield AI Corp',
+      });
 
       expect(response.status).toBe(201);
       expect(response.body.user).toBeDefined();
       expect(response.body.user.email).toBe('founder@truthshield.ai');
       expect(response.body.user.role).toBe('admin');
-      
+
       expect(response.body.org).toBeDefined();
       expect(response.body.org.name).toBe('TruthShield AI Corp');
-      
+
       expect(response.body.tokens).toBeDefined();
       expect(response.body.tokens.accessToken).toBeDefined();
       expect(response.body.tokens.refreshToken).toBeDefined();
@@ -258,21 +266,17 @@ describe('TruthShield API Complete Authentication & Rate Limiting Integration Te
 
     it('should successfully log in and return access tokens for valid credentials', async () => {
       // 1. Register account
-      await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          email: 'login@truthshield.ai',
-          password: 'SecurePassWord123!',
-          orgName: 'Login Corp',
-        });
+      await request(app).post('/api/v1/auth/register').send({
+        email: 'login@truthshield.ai',
+        password: 'SecurePassWord123!',
+        orgName: 'Login Corp',
+      });
 
       // 2. Perform Login
-      const response = await request(app)
-        .post('/api/v1/auth/login')
-        .send({
-          email: 'login@truthshield.ai',
-          password: 'SecurePassWord123!',
-        });
+      const response = await request(app).post('/api/v1/auth/login').send({
+        email: 'login@truthshield.ai',
+        password: 'SecurePassWord123!',
+      });
 
       expect(response.status).toBe(200);
       expect(response.body.tokens).toBeDefined();
@@ -282,33 +286,27 @@ describe('TruthShield API Complete Authentication & Rate Limiting Integration Te
 
     it('should fail with a 401 and generic message for an incorrect password', async () => {
       // 1. Register account
-      await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          email: 'wrongpass@truthshield.ai',
-          password: 'SecurePassWord123!',
-          orgName: 'WrongPass Corp',
-        });
+      await request(app).post('/api/v1/auth/register').send({
+        email: 'wrongpass@truthshield.ai',
+        password: 'SecurePassWord123!',
+        orgName: 'WrongPass Corp',
+      });
 
       // 2. Login with wrong password
-      const response = await request(app)
-        .post('/api/v1/auth/login')
-        .send({
-          email: 'wrongpass@truthshield.ai',
-          password: 'IncorrectPassword123!',
-        });
+      const response = await request(app).post('/api/v1/auth/login').send({
+        email: 'wrongpass@truthshield.ai',
+        password: 'IncorrectPassword123!',
+      });
 
       expect(response.status).toBe(401);
       expect(response.body.error.message).toBe('Invalid credentials');
     });
 
     it('should return the exact same 401 error message for a non-existent email', async () => {
-      const response = await request(app)
-        .post('/api/v1/auth/login')
-        .send({
-          email: 'notregistered@truthshield.ai',
-          password: 'SecurePassWord123!',
-        });
+      const response = await request(app).post('/api/v1/auth/login').send({
+        email: 'notregistered@truthshield.ai',
+        password: 'SecurePassWord123!',
+      });
 
       expect(response.status).toBe(401);
       expect(response.body.error.message).toBe('Invalid credentials');

@@ -34,7 +34,7 @@ router.get(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -56,7 +56,7 @@ router.get(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -81,7 +81,7 @@ router.get(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -111,7 +111,7 @@ router.get(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -148,7 +148,7 @@ router.post(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -178,7 +178,7 @@ router.post(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -211,7 +211,7 @@ router.post(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -239,12 +239,16 @@ router.post(
         throw new ForbiddenError('Only the assigned analyst can escalate this review');
       }
 
-      const updated = await ReviewService.escalateReview(reviewId, (req as any).user.userId, reason);
+      const updated = await ReviewService.escalateReview(
+        reviewId,
+        (req as any).user.userId,
+        reason,
+      );
       res.json(updated);
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 export default router;

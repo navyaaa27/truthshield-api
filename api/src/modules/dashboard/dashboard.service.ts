@@ -34,26 +34,20 @@ export class DashboardService {
       const days = env.DASHBOARD_STATS_WINDOW_DAYS || 30;
 
       // Run database queries in parallel
-      const [
-        orgRes,
-        statsRes,
-        prevStatsRes,
-        pendingReviewsRes,
-        criticalAlertsRes,
-        quotaRes,
-      ] = await Promise.all([
-        // Query 1: Org + member count
-        query(
-          `SELECT o.*, COUNT(u.id)::int as member_count
+      const [orgRes, statsRes, prevStatsRes, pendingReviewsRes, criticalAlertsRes, quotaRes] =
+        await Promise.all([
+          // Query 1: Org + member count
+          query(
+            `SELECT o.*, COUNT(u.id)::int as member_count
            FROM organizations o
            LEFT JOIN users u ON u.org_id = o.id AND u.is_active = true
            WHERE o.id = $1
            GROUP BY o.id`,
-          [orgId]
-        ),
-        // Query 2: Current period job statistics
-        query(
-          `SELECT 
+            [orgId],
+          ),
+          // Query 2: Current period job statistics
+          query(
+            `SELECT 
              COUNT(*)::int as total,
              COUNT(*) FILTER (WHERE completed_at > NOW() - ($2 * INTERVAL '1 day'))::int as this_period,
              COUNT(*) FILTER (WHERE completed_at > NOW() - ($2 * INTERVAL '1 day') AND aggregated_score > 50)::int as threats_detected,
@@ -68,11 +62,11 @@ export class DashboardService {
              )::float as clean_pct
            FROM detection_jobs
            WHERE org_id = $1 AND status = 'completed'`,
-          [orgId, days]
-        ),
-        // Query 3: Previous period for trend calculation
-        query(
-          `SELECT 
+            [orgId, days],
+          ),
+          // Query 3: Previous period for trend calculation
+          query(
+            `SELECT 
              COUNT(*) FILTER (
                WHERE completed_at > NOW() - ($2 * 2 * INTERVAL '1 day')
                  AND completed_at <= NOW() - ($2 * INTERVAL '1 day')
@@ -80,39 +74,45 @@ export class DashboardService {
              )::int as prev_threats
            FROM detection_jobs
            WHERE org_id = $1 AND status = 'completed'`,
-          [orgId, days]
-        ),
-        // Query 4: Pending reviews count
-        query(
-          `SELECT COUNT(*)::int as pending_count 
+            [orgId, days],
+          ),
+          // Query 4: Pending reviews count
+          query(
+            `SELECT COUNT(*)::int as pending_count 
            FROM human_reviews
            WHERE org_id = $1 AND status IN ('pending', 'assigned', 'in_review')`,
-          [orgId]
-        ),
-        // Query 5: Critical unread alerts count
-        query(
-          `SELECT COUNT(*)::int as critical_count 
+            [orgId],
+          ),
+          // Query 5: Critical unread alerts count
+          query(
+            `SELECT COUNT(*)::int as critical_count 
            FROM alerts
            WHERE org_id = $1 AND severity = 'critical' AND acknowledged_at IS NULL`,
-          [orgId]
-        ),
-        // Query 6: Quota usage this month
-        query(
-          `SELECT 
+            [orgId],
+          ),
+          // Query 6: Quota usage this month
+          query(
+            `SELECT 
              COUNT(*)::int as jobs_used,
              COUNT(*) FILTER (WHERE s3_key IS NOT NULL)::int as uploads_used
            FROM detection_jobs
            WHERE org_id = $1 AND created_at > date_trunc('month', NOW())`,
-          [orgId]
-        ),
-      ]);
+            [orgId],
+          ),
+        ]);
 
       const org = orgRes.rows[0];
       if (!org) {
         throw new Error('Organization not found');
       }
 
-      const stats = statsRes.rows[0] || { total: 0, this_period: 0, threats_detected: 0, avg_score: 0, clean_pct: 100 };
+      const stats = statsRes.rows[0] || {
+        total: 0,
+        this_period: 0,
+        threats_detected: 0,
+        avg_score: 0,
+        clean_pct: 100,
+      };
       const prevStats = prevStatsRes.rows[0] || { prev_threats: 0 };
       const pendingReviews = pendingReviewsRes.rows[0]?.pending_count || 0;
       const criticalAlerts = criticalAlertsRes.rows[0]?.critical_count || 0;
@@ -132,7 +132,10 @@ export class DashboardService {
       }
 
       // Threats Trend
-      const threatsTrend = this.calculateTrend(stats.threats_detected || 0, prevStats.prev_threats || 0);
+      const threatsTrend = this.calculateTrend(
+        stats.threats_detected || 0,
+        prevStats.prev_threats || 0,
+      );
 
       // Quota reset date (1st of next month)
       const nextMonth = new Date();
@@ -180,7 +183,7 @@ export class DashboardService {
       endDate?: string;
       page: number;
       limit: number;
-    }
+    },
   ): Promise<{ items: ThreatFeedItem[]; total: number }> {
     const cacheKey = CacheKeys.dashboardFeed(orgId, filters as any);
     const ttl = env.DASHBOARD_CACHE_TTL || 30;
@@ -291,7 +294,7 @@ export class DashboardService {
       const items: ThreatFeedItem[] = await Promise.all(
         res.rows.map(async (row) => {
           const modResults = row.module_results || [];
-          
+
           // Determine dominant threat (highest scoring module if score >= 16)
           let dominantThreat: string | null = null;
           if (modResults.length > 0 && modResults[0].score >= 16) {
@@ -302,7 +305,11 @@ export class DashboardService {
           let thumbnailUrl: string | null = null;
           if (row.s3_key) {
             try {
-              thumbnailUrl = await S3Service.getPresignedDownloadUrl(`${row.s3_key}-thumb`, undefined, 300);
+              thumbnailUrl = await S3Service.getPresignedDownloadUrl(
+                `${row.s3_key}-thumb`,
+                undefined,
+                300,
+              );
             } catch {
               thumbnailUrl = null;
             }
@@ -326,7 +333,7 @@ export class DashboardService {
             requiresReview: !!row.review_id,
             thumbnailUrl,
           };
-        })
+        }),
       );
 
       return { items, total };
@@ -358,7 +365,7 @@ export class DashboardService {
            AND j.status = 'completed'
          GROUP BY DATE_TRUNC('day', j.created_at)
          ORDER BY date ASC`,
-        [orgId, days]
+        [orgId, days],
       );
 
       const map: Record<string, TrendDataPoint> = {};
@@ -427,7 +434,7 @@ export class DashboardService {
          WHERE org_id = $1
            AND created_at > NOW() - ($2 * INTERVAL '1 day')
          GROUP BY module`,
-        [orgId, days]
+        [orgId, days],
       );
 
       const defaultModules = ['deepfake', 'fake_news', 'stolen_content', 'metadata_tampering'];

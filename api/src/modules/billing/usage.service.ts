@@ -22,9 +22,16 @@ export class UsageService {
   /**
    * Safe helper to send quota warning emails
    */
-  static async sendQuotaWarningEmail(orgId: string, pct: number, currentUsage: number, limit: number): Promise<void> {
+  static async sendQuotaWarningEmail(
+    orgId: string,
+    pct: number,
+    currentUsage: number,
+    limit: number,
+  ): Promise<void> {
     try {
-      const orgRes = await query(`SELECT name, source_metadata FROM organizations WHERE id = $1`, [orgId]);
+      const orgRes = await query(`SELECT name, source_metadata FROM organizations WHERE id = $1`, [
+        orgId,
+      ]);
       if (!orgRes.rowCount || orgRes.rowCount === 0) return;
       const org = orgRes.rows[0];
       const metadata = org.source_metadata || {};
@@ -34,15 +41,17 @@ export class UsageService {
         host: env.SMTP_HOST || 'localhost',
         port: env.SMTP_PORT || 587,
         secure: env.SMTP_PORT === 465,
-        auth: env.SMTP_USER ? {
-          user: env.SMTP_USER,
-          pass: env.SMTP_PASS,
-        } : undefined,
+        auth: env.SMTP_USER
+          ? {
+              user: env.SMTP_USER,
+              pass: env.SMTP_PASS,
+            }
+          : undefined,
       });
 
       const subject = `[TruthShield] Warning: Quota usage at ${pct}% for ${org.name}`;
       const text = `Hello,\n\nYour organization ${org.name} has consumed ${currentUsage} out of ${limit} jobs (${pct}%).\nPlease upgrade your subscription to avoid disruption.\n\nBest,\nTruthShield Team`;
-      
+
       await transporter.sendMail({
         from: env.SMTP_FROM || 'alerts@truthshield.ai',
         to: recipient,
@@ -63,8 +72,11 @@ export class UsageService {
     periodEnd: Date;
     planTier: string;
   }> {
-    const subRes = await query(`SELECT plan_tier, current_period_start, current_period_end FROM subscriptions WHERE org_id = $1`, [orgId]);
-    
+    const subRes = await query(
+      `SELECT plan_tier, current_period_start, current_period_end FROM subscriptions WHERE org_id = $1`,
+      [orgId],
+    );
+
     let planTier = 'starter';
     let periodStart = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000); // Default to middle of 30 days
     let periodEnd = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
@@ -81,7 +93,7 @@ export class UsageService {
     const usageRes = await query(
       `SELECT id FROM usage_records 
        WHERE org_id = $1 AND period_start = $2`,
-      [orgId, periodStart]
+      [orgId, periodStart],
     );
 
     if (!usageRes.rowCount || usageRes.rowCount === 0) {
@@ -89,7 +101,7 @@ export class UsageService {
         `INSERT INTO usage_records (org_id, period_start, period_end, jobs_limit)
          VALUES ($1, $2, $3, $4)
          ON CONFLICT DO NOTHING`,
-        [orgId, periodStart, periodEnd, limits.jobs]
+        [orgId, periodStart, periodEnd, limits.jobs],
       );
     }
 
@@ -101,7 +113,7 @@ export class UsageService {
    */
   static async incrementUsage(
     orgId: string,
-    metric: 'jobs' | 'uploads' | 'api_calls' | 'reports'
+    metric: 'jobs' | 'uploads' | 'api_calls' | 'reports',
   ): Promise<void> {
     try {
       const { periodStart, planTier } = await this.getOrCreateCurrentPeriod(orgId);
@@ -115,7 +127,9 @@ export class UsageService {
         await redisClient.expire(redisKey, 35 * 24 * 60 * 60); // 35 days expiry
         count = val;
       } catch (err: any) {
-        logger.warn(`[UsageService.incrementUsage] Redis increment failed: ${err.message}. Relying on DB only.`);
+        logger.warn(
+          `[UsageService.incrementUsage] Redis increment failed: ${err.message}. Relying on DB only.`,
+        );
         // Fallback to database direct increment
         await query(
           `UPDATE usage_records
@@ -124,7 +138,7 @@ export class UsageService {
                api_calls = api_calls + CASE WHEN $1 = 'api_calls' THEN 1 ELSE 0 END,
                reports_generated = reports_generated + CASE WHEN $1 = 'reports' THEN 1 ELSE 0 END
            WHERE org_id = $2 AND period_start = $3`,
-          [metric, orgId, periodStart]
+          [metric, orgId, periodStart],
         );
         return;
       }
@@ -156,7 +170,7 @@ export class UsageService {
    */
   static async checkUsageLimit(
     orgId: string,
-    metric: 'jobs' | 'uploads'
+    metric: 'jobs' | 'uploads',
   ): Promise<{ allowed: boolean; usage: number; limit: number }> {
     try {
       const { periodStart, planTier } = await this.getOrCreateCurrentPeriod(orgId);
@@ -174,7 +188,7 @@ export class UsageService {
           const dbRes = await query(
             `SELECT jobs_run, uploads_count FROM usage_records 
              WHERE org_id = $1 AND period_start = $2`,
-            [orgId, periodStart]
+            [orgId, periodStart],
           );
           if (dbRes.rowCount && dbRes.rowCount > 0) {
             usage = metric === 'jobs' ? dbRes.rows[0].jobs_run : dbRes.rows[0].uploads_count;
@@ -183,11 +197,13 @@ export class UsageService {
           }
         }
       } catch (redisErr: any) {
-        logger.warn(`[UsageService.checkUsageLimit] Redis down: ${redisErr.message}. Falling back to DB.`);
+        logger.warn(
+          `[UsageService.checkUsageLimit] Redis down: ${redisErr.message}. Falling back to DB.`,
+        );
         const dbRes = await query(
           `SELECT jobs_run, uploads_count FROM usage_records 
            WHERE org_id = $1 AND period_start = $2`,
-          [orgId, periodStart]
+          [orgId, periodStart],
         );
         if (dbRes.rowCount && dbRes.rowCount > 0) {
           usage = metric === 'jobs' ? dbRes.rows[0].jobs_run : dbRes.rows[0].uploads_count;
@@ -229,7 +245,12 @@ export class UsageService {
         const metric = parts[2];
         const periodStartStr = parts[3];
 
-        if (metric !== 'jobs' && metric !== 'uploads' && metric !== 'api_calls' && metric !== 'reports') {
+        if (
+          metric !== 'jobs' &&
+          metric !== 'uploads' &&
+          metric !== 'api_calls' &&
+          metric !== 'reports'
+        ) {
           continue;
         }
 
@@ -251,12 +272,14 @@ export class UsageService {
                    api_calls = api_calls + CASE WHEN $1 = 'api_calls' THEN $2 ELSE 0 END,
                    reports_generated = reports_generated + CASE WHEN $1 = 'reports' THEN $2 ELSE 0 END
                WHERE org_id = $3 AND period_start = $4`,
-              [metric, delta, orgId, new Date(periodStartStr)]
+              [metric, delta, orgId, new Date(periodStartStr)],
             );
             await redisClient.setex(syncedKey, 35 * 24 * 60 * 60, count.toString());
           }
         } catch (itemErr: any) {
-          logger.error(`[UsageService.syncUsageToDatabase] Failed sync for key ${key}: ${itemErr.message}`);
+          logger.error(
+            `[UsageService.syncUsageToDatabase] Failed sync for key ${key}: ${itemErr.message}`,
+          );
         }
       }
     } catch (err: any) {
@@ -275,7 +298,7 @@ export class UsageService {
     const usageRes = await query(
       `SELECT * FROM usage_records 
        WHERE org_id = $1 AND period_start = $2`,
-      [orgId, periodStart]
+      [orgId, periodStart],
     );
 
     let jobsRun = 0;

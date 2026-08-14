@@ -53,7 +53,8 @@ export class BillingService {
     if (tier === 'starter') return process.env.STRIPE_STARTER_PRICE_ID || 'price_starter_fake';
     if (tier === 'growth') return process.env.STRIPE_GROWTH_PRICE_ID || 'price_growth_fake';
     if (tier === 'pro') return process.env.STRIPE_PRO_PRICE_ID || 'price_pro_fake';
-    if (tier === 'enterprise') return process.env.STRIPE_ENTERPRISE_PRICE_ID || 'price_enterprise_fake';
+    if (tier === 'enterprise')
+      return process.env.STRIPE_ENTERPRISE_PRICE_ID || 'price_enterprise_fake';
     throw new Error(`Unknown plan tier: ${planTier}`);
   }
 
@@ -83,10 +84,12 @@ export class BillingService {
        ON CONFLICT (org_id) 
        DO UPDATE SET stripe_customer_id = EXCLUDED.stripe_customer_id
        RETURNING stripe_customer_id`,
-      [org.id, stripeCustomerId]
+      [org.id, stripeCustomerId],
     );
 
-    logger.info(`[BillingService.createCustomer] Customer registered for Org ${org.id}: ${stripeCustomerId}`);
+    logger.info(
+      `[BillingService.createCustomer] Customer registered for Org ${org.id}: ${stripeCustomerId}`,
+    );
     return stripeCustomerId;
   }
 
@@ -104,7 +107,9 @@ export class BillingService {
     const { orgId, planTier, trialDays } = params;
 
     // 1. Fetch stripe customer ID or create customer
-    const subRes = await query(`SELECT stripe_customer_id FROM subscriptions WHERE org_id = $1`, [orgId]);
+    const subRes = await query(`SELECT stripe_customer_id FROM subscriptions WHERE org_id = $1`, [
+      orgId,
+    ]);
     let customerId = subRes.rows[0]?.stripe_customer_id;
 
     if (!customerId) {
@@ -121,7 +126,8 @@ export class BillingService {
     let currentPeriodStart = new Date();
     let currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days default
     let status = trialDays && trialDays > 0 ? 'trialing' : 'active';
-    let trialEnd: Date | null = trialDays && trialDays > 0 ? new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000) : null;
+    let trialEnd: Date | null =
+      trialDays && trialDays > 0 ? new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000) : null;
 
     if (getBillingEnabled()) {
       try {
@@ -164,7 +170,16 @@ export class BillingService {
         trial_end = EXCLUDED.trial_end,
         cancel_at_period_end = EXCLUDED.cancel_at_period_end,
         updated_at = NOW()`,
-      [orgId, customerId, subscriptionId, planTier, status, currentPeriodStart, currentPeriodEnd, trialEnd]
+      [
+        orgId,
+        customerId,
+        subscriptionId,
+        planTier,
+        status,
+        currentPeriodStart,
+        currentPeriodEnd,
+        trialEnd,
+      ],
     );
 
     // 3. Update Org plan_tier
@@ -176,13 +191,15 @@ export class BillingService {
       `INSERT INTO usage_records (org_id, period_start, period_end, jobs_limit)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT DO NOTHING`,
-      [orgId, currentPeriodStart, currentPeriodEnd, limits.jobs]
+      [orgId, currentPeriodStart, currentPeriodEnd, limits.jobs],
     );
 
     // 5. Invalidate caches
     await cacheService.delete(CacheKeys.orgProfile(orgId));
 
-    logger.info(`[BillingService.createSubscription] Subscription created for Org ${orgId} to plan ${planTier}`);
+    logger.info(
+      `[BillingService.createSubscription] Subscription created for Org ${orgId} to plan ${planTier}`,
+    );
     return { subscriptionId, clientSecret };
   }
 
@@ -207,10 +224,12 @@ export class BillingService {
         if (itemId) {
           await stripe.subscriptions.update(subRow.stripe_subscription_id, {
             proration_behavior: 'always_invoice',
-            items: [{
-              id: itemId,
-              price: priceId,
-            }],
+            items: [
+              {
+                id: itemId,
+                price: priceId,
+              },
+            ],
           });
         }
       } catch (err: any) {
@@ -226,7 +245,7 @@ export class BillingService {
            updated_at = NOW()
        WHERE org_id = $2
        RETURNING *`,
-      [newPlanTier, orgId]
+      [newPlanTier, orgId],
     );
 
     // Update organization plan_tier
@@ -238,7 +257,7 @@ export class BillingService {
       `UPDATE usage_records
        SET jobs_limit = $1
        WHERE org_id = $2 AND period_start <= NOW() AND period_end >= NOW()`,
-      [limits.jobs, orgId]
+      [limits.jobs, orgId],
     );
 
     // Invalidate caches
@@ -252,10 +271,12 @@ export class BillingService {
     await query(
       `INSERT INTO audit_logs (org_id, user_id, action, resource_type, resource_id)
        VALUES ($1, $2, $3, $4, $5)`,
-      [orgId, '00000000-0000-0000-0000-000000000000', action, 'subscriptions', subRow.id]
+      [orgId, '00000000-0000-0000-0000-000000000000', action, 'subscriptions', subRow.id],
     );
 
-    logger.info(`[BillingService.updateSubscription] Org ${orgId} moved from ${oldPlanTier} to ${newPlanTier}`);
+    logger.info(
+      `[BillingService.updateSubscription] Org ${orgId} moved from ${oldPlanTier} to ${newPlanTier}`,
+    );
     return updateRes.rows[0];
   }
 
@@ -295,7 +316,7 @@ export class BillingService {
              updated_at = NOW()
          WHERE org_id = $1
          RETURNING *`,
-        [orgId]
+        [orgId],
       );
       // Downgrade organization to starter
       await query(`UPDATE organizations SET plan_tier = 'starter' WHERE id = $1`, [orgId]);
@@ -306,7 +327,7 @@ export class BillingService {
              updated_at = NOW()
          WHERE org_id = $1
          RETURNING *`,
-        [orgId]
+        [orgId],
       );
     }
 
@@ -317,10 +338,18 @@ export class BillingService {
     await query(
       `INSERT INTO audit_logs (org_id, user_id, action, resource_type, resource_id)
        VALUES ($1, $2, $3, $4, $5)`,
-      [orgId, '00000000-0000-0000-0000-000000000000', 'SUBSCRIPTION_CANCELED', 'subscriptions', subRow.id]
+      [
+        orgId,
+        '00000000-0000-0000-0000-000000000000',
+        'SUBSCRIPTION_CANCELED',
+        'subscriptions',
+        subRow.id,
+      ],
     );
 
-    logger.info(`[BillingService.cancelSubscription] Canceled subscription for Org ${orgId} (immediately: ${immediately})`);
+    logger.info(
+      `[BillingService.cancelSubscription] Canceled subscription for Org ${orgId} (immediately: ${immediately})`,
+    );
     return updateRes.rows[0];
   }
 
@@ -342,7 +371,7 @@ export class BillingService {
       `SELECT * FROM usage_records
        WHERE org_id = $1 AND period_start <= NOW() AND period_end >= NOW()
        LIMIT 1`,
-      [orgId]
+      [orgId],
     );
 
     return {

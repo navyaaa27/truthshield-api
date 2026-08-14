@@ -19,29 +19,37 @@ export class AbuseDetector {
 
   checkSuspiciousUserAgent(userAgent: string): boolean {
     if (!userAgent || userAgent.trim() === '') return true;
-    
+
     const ua = userAgent.toLowerCase();
-    const suspiciousPatterns = ['sqlmap', 'nikto', 'masscan', 'zgrab', 'curl', 'wget', 'python-requests'];
-    
+    const suspiciousPatterns = [
+      'sqlmap',
+      'nikto',
+      'masscan',
+      'zgrab',
+      'curl',
+      'wget',
+      'python-requests',
+    ];
+
     for (const pattern of suspiciousPatterns) {
       if (ua.includes(pattern)) return true;
     }
 
     const parser = new UAParser(userAgent);
     const browser = parser.getBrowser();
-    
+
     // Flag claiming to be a browser but missing version
     if (browser.name && !browser.version) {
       return true;
     }
-    
+
     return false;
   }
 
   async checkRequestPattern(ip: string, endpoint: string): Promise<boolean> {
     const key = `ts:req_pattern:${ip}:${endpoint}`;
     const count = await redisClient.incr(key);
-    
+
     if (count === 1) {
       await redisClient.expire(key, 3600); // 1 hour TTL
     }
@@ -52,7 +60,7 @@ export class AbuseDetector {
   async banIP(ip: string, reason: string, hours: number): Promise<void> {
     const expiresAt = new Date(Date.now() + hours * 3600 * 1000).toISOString();
     const value = JSON.stringify({ reason, bannedAt: new Date().toISOString(), expiresAt });
-    
+
     await redisClient.setex(`ts:banned_ip:${ip}`, hours * 3600, value);
     logger.warn(`[AbuseDetector] IP banned: ${ip}, reason: ${reason}`);
   }
@@ -75,10 +83,10 @@ export class AbuseDetector {
 
   async checkRequest(req: Request): Promise<AbuseCheckResult> {
     const ip = req.ip || 'unknown';
-    
+
     // Skip checking trusted IPs
     if (env.RATE_LIMIT_SKIP_TRUSTED_IPS) {
-      const trusted = env.RATE_LIMIT_SKIP_TRUSTED_IPS.split(',').map(i => i.trim());
+      const trusted = env.RATE_LIMIT_SKIP_TRUSTED_IPS.split(',').map((i) => i.trim());
       if (trusted.includes(ip)) {
         return { blocked: false, threatScore: 0 };
       }
@@ -91,9 +99,9 @@ export class AbuseDetector {
 
     const suspiciousUA = this.checkSuspiciousUserAgent(req.headers['user-agent'] || '');
     const suspiciousPattern = await this.checkRequestPattern(ip, req.originalUrl);
-    
+
     // Fetch failed auth attempts if on auth routes (mocked as 0 for global check here)
-    const failedAuthAttempts = 0; 
+    const failedAuthAttempts = 0;
 
     const threatScore = this.calculateThreatScore({
       isBanned,
@@ -126,7 +134,7 @@ export const abuseCheck = async (req: Request, res: Response, next: NextFunction
         error: {
           code: 'IP_BANNED',
           message: 'Access denied due to suspicious activity.',
-        }
+        },
       });
       return; // Do not call next()
     }

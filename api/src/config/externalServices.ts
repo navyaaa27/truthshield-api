@@ -23,20 +23,32 @@ export function validateExternalServices(): ServiceStatus {
   logger.info('──────────────────────────────────────────');
   logger.info('  External Services Configuration Status  ');
   logger.info('──────────────────────────────────────────');
-  logger.info(`  ${status.hiveEnabled ? '[✓]' : '[✗]'} Hive Moderation: ${status.hiveEnabled ? 'configured' : 'NOT configured'}`);
-  logger.info(`  ${status.rekognitionEnabled ? '[✓]' : '[✗]'} AWS Rekognition: ${status.rekognitionEnabled ? 'configured' : 'NOT configured'}`);
-  logger.info(`  ${status.googleFactCheckEnabled ? '[✓]' : '[✗]'} Google Fact Check: ${status.googleFactCheckEnabled ? 'configured' : 'NOT configured'}`);
-  logger.info(`  ${status.anthropicEnabled ? '[✓]' : '[✗]'} Anthropic Claude: ${status.anthropicEnabled ? 'configured' : 'NOT configured'}`);
+  logger.info(
+    `  ${status.hiveEnabled ? '[✓]' : '[✗]'} Hive Moderation: ${status.hiveEnabled ? 'configured' : 'NOT configured'}`,
+  );
+  logger.info(
+    `  ${status.rekognitionEnabled ? '[✓]' : '[✗]'} AWS Rekognition: ${status.rekognitionEnabled ? 'configured' : 'NOT configured'}`,
+  );
+  logger.info(
+    `  ${status.googleFactCheckEnabled ? '[✓]' : '[✗]'} Google Fact Check: ${status.googleFactCheckEnabled ? 'configured' : 'NOT configured'}`,
+  );
+  logger.info(
+    `  ${status.anthropicEnabled ? '[✓]' : '[✗]'} Anthropic Claude: ${status.anthropicEnabled ? 'configured' : 'NOT configured'}`,
+  );
   logger.info('──────────────────────────────────────────');
 
   if (!status.hiveEnabled) {
     logger.warn('Hive Moderation API key not set — deepfake detection will be unavailable.');
   }
   if (!status.anthropicEnabled) {
-    logger.warn('Anthropic API key not set — AI-powered analysis features will use fallback templates.');
+    logger.warn(
+      'Anthropic API key not set — AI-powered analysis features will use fallback templates.',
+    );
   }
   if (!status.googleFactCheckEnabled) {
-    logger.warn('Google Fact Check API key not set — fact-checking will rely on heuristic analysis only.');
+    logger.warn(
+      'Google Fact Check API key not set — fact-checking will rely on heuristic analysis only.',
+    );
   }
 
   return status;

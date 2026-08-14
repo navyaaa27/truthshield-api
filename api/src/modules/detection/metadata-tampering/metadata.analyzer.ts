@@ -7,7 +7,12 @@ import { redis } from '../../../shared/redis/index.js';
 import { S3Service } from '../../../shared/storage/s3.service.js';
 import { logger } from '../../../utils/logger.js';
 import { createTempDir, cleanupTempDir } from '../../../utils/tempFiles.js';
-import { ExifAnalysis, ELAAnalysis, HashVerification, MetadataTamperingResult } from './metadata.types.js';
+import {
+  ExifAnalysis,
+  ELAAnalysis,
+  HashVerification,
+  MetadataTamperingResult,
+} from './metadata.types.js';
 
 const EDITING_SOFTWARE = [
   'photoshop',
@@ -21,7 +26,7 @@ const EDITING_SOFTWARE = [
   'acorn',
   'affinity',
   'fotor',
-  'pixlr'
+  'pixlr',
 ];
 
 export class MetadataTamperingAnalyzer {
@@ -36,12 +41,12 @@ export class MetadataTamperingAnalyzer {
       // 1. Download file from S3 to temp workspace using pre-signed GET URL
       logger.info(`[MetadataTampering] Fetching file from S3: ${s3Key}`);
       const downloadUrl = await S3Service.getPresignedDownloadUrl(s3Key);
-      
+
       const response = await fetch(downloadUrl);
       if (!response.ok) {
         throw new Error(`Failed to download file from S3: ${response.statusText}`);
       }
-      
+
       const arrayBuffer = await response.arrayBuffer();
       const fileBuffer = Buffer.from(arrayBuffer);
       await fs.writeFile(filePath, fileBuffer);
@@ -104,7 +109,12 @@ export class MetadataTamperingAnalyzer {
       ]);
 
       // 4. Calculate aggregated score and verdict parameters
-      const { score, verdict, confidence } = this.calculateFinalScore(exif, ela, hash, analyzersRunCount);
+      const { score, verdict, confidence } = this.calculateFinalScore(
+        exif,
+        ela,
+        hash,
+        analyzersRunCount,
+      );
 
       // 5. Gather unique flags and inconsistency messages
       const flags = Array.from(
@@ -113,33 +123,47 @@ export class MetadataTamperingAnalyzer {
           ...(ela.elaScore > 25 ? ['high_variance_ela'] : []),
           ...(ela.suspiciousRegions ? ['localized_ela_irregularity'] : []),
           ...(hash.hashChanged ? ['file_hash_altered'] : []),
-        ])
+        ]),
       );
 
       const inconsistencies: string[] = [];
       if (exif.flags.includes('editing_software_detected')) {
-        inconsistencies.push(`Editing software signature detected in EXIF metadata: '${exif.software}'.`);
+        inconsistencies.push(
+          `Editing software signature detected in EXIF metadata: '${exif.software}'.`,
+        );
       }
       if (exif.flags.includes('gps_inconsistent')) {
-        inconsistencies.push('GPS location coordinates do not align with metadata location claims.');
+        inconsistencies.push(
+          'GPS location coordinates do not align with metadata location claims.',
+        );
       }
       if (exif.flags.includes('metadata_modification_gap')) {
-        inconsistencies.push(`Creation date and Modification date discrepancy detected (Create: ${exif.createDate}, Modify: ${exif.modifyDate}).`);
+        inconsistencies.push(
+          `Creation date and Modification date discrepancy detected (Create: ${exif.createDate}, Modify: ${exif.modifyDate}).`,
+        );
       }
       if (exif.flags.includes('missing_expected_exif_fields')) {
-        inconsistencies.push('Standard camera-generated tags are missing from camera model metadata.');
+        inconsistencies.push(
+          'Standard camera-generated tags are missing from camera model metadata.',
+        );
       }
       if (exif.flags.includes('thumbnail_dimension_mismatch')) {
         inconsistencies.push('Aspect ratio of embedded EXIF thumbnail mismatches the main image.');
       }
       if (ela.elaScore > 25 && !ela.skipped) {
-        inconsistencies.push(`High pixel compression variance detected (ELA StdDev: ${ela.elaScore.toFixed(2)}).`);
+        inconsistencies.push(
+          `High pixel compression variance detected (ELA StdDev: ${ela.elaScore.toFixed(2)}).`,
+        );
       }
       if (ela.suspiciousRegions && !ela.skipped) {
-        inconsistencies.push('Localized high-frequency re-compression pattern detected (possible copy-paste splice).');
+        inconsistencies.push(
+          'Localized high-frequency re-compression pattern detected (possible copy-paste splice).',
+        );
       }
       if (hash.hashChanged) {
-        inconsistencies.push(`SHA-256 hash changed on re-analysis from previously recorded state (Prev: ${hash.previousHash}, Current: ${hash.sha256}).`);
+        inconsistencies.push(
+          `SHA-256 hash changed on re-analysis from previously recorded state (Prev: ${hash.previousHash}, Current: ${hash.sha256}).`,
+        );
       }
 
       return {
@@ -163,15 +187,21 @@ export class MetadataTamperingAnalyzer {
   /**
    * Parses and flags inconsistent EXIF properties.
    */
-  private async analyzeExif(filePath: string, mainWidth?: number, mainHeight?: number): Promise<ExifAnalysis> {
+  private async analyzeExif(
+    filePath: string,
+    mainWidth?: number,
+    mainHeight?: number,
+  ): Promise<ExifAnalysis> {
     const flags: string[] = [];
-    
+
     // Parse EXIF tags using exifr
-    const exif = await exifr.parse(filePath, {
-      tiff: true,
-      xmp: true,
-      gps: true,
-    }).catch(() => null);
+    const exif = await exifr
+      .parse(filePath, {
+        tiff: true,
+        xmp: true,
+        gps: true,
+      })
+      .catch(() => null);
 
     if (!exif) {
       return { flags };
@@ -181,7 +211,7 @@ export class MetadataTamperingAnalyzer {
     const cameraModel = exif.Model || exif.Make || undefined;
     const createDate = exif.CreateDate || exif.DateTimeOriginal || undefined;
     const modifyDate = exif.ModifyDate || exif.DateTime || undefined;
-    
+
     let gpsData: { latitude: number; longitude: number } | undefined;
     if (exif.latitude !== undefined && exif.longitude !== undefined) {
       gpsData = {
@@ -205,7 +235,11 @@ export class MetadataTamperingAnalyzer {
       if (hasClaim) {
         // Simple mock validation rule: if latitude is exactly 0 or mismatches text length
         const claimText = `${exif.City || ''} ${exif.Country || ''}`;
-        if (claimText.length > 0 && Math.abs(gpsData.latitude) < 0.1 && Math.abs(gpsData.longitude) < 0.1) {
+        if (
+          claimText.length > 0 &&
+          Math.abs(gpsData.latitude) < 0.1 &&
+          Math.abs(gpsData.longitude) < 0.1
+        ) {
           flags.push('gps_inconsistent');
         }
       }
@@ -254,7 +288,10 @@ export class MetadataTamperingAnalyzer {
    * Performs Error Level Analysis (ELA) by identifying compression discrepancies.
    */
   private async analyzeELA(filePath: string, contentType: string): Promise<ELAAnalysis> {
-    const isJpeg = /\.(jpg|jpeg)$/i.test(filePath) || contentType === 'image/jpeg' || contentType === 'image/jpg';
+    const isJpeg =
+      /\.(jpg|jpeg)$/i.test(filePath) ||
+      contentType === 'image/jpeg' ||
+      contentType === 'image/jpg';
     if (!isJpeg) {
       return {
         suspiciousRegions: false,
@@ -388,8 +425,12 @@ export class MetadataTamperingAnalyzer {
     exif: ExifAnalysis,
     ela: ELAAnalysis,
     hash: HashVerification,
-    analyzersRunCount: number
-  ): { score: number; verdict: 'clean' | 'suspicious' | 'requires_review' | 'manipulated'; confidence: number } {
+    analyzersRunCount: number,
+  ): {
+    score: number;
+    verdict: 'clean' | 'suspicious' | 'requires_review' | 'manipulated';
+    confidence: number;
+  } {
     let score = 0;
 
     // 1. EXIF flags: +8 per flag
@@ -402,7 +443,7 @@ export class MetadataTamperingAnalyzer {
       } else if (ela.elaScore > 50) {
         score += 25;
       }
-      
+
       // Localized difference regions found gives additional +10 points
       if (ela.suspiciousRegions) {
         score += 15;
@@ -433,9 +474,9 @@ export class MetadataTamperingAnalyzer {
     }
 
     // 6. Confidence rating
-    let confidence = 0.40;
+    let confidence = 0.4;
     if (analyzersRunCount === 3) {
-      confidence = 0.90;
+      confidence = 0.9;
     } else if (analyzersRunCount === 2) {
       confidence = 0.65;
     }

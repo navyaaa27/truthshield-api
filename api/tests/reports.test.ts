@@ -10,13 +10,15 @@ let mockOrganizations: any[] = [];
 let mockUsers: any[] = [];
 let mockReports: any[] = [];
 let mockAuditLogs: any[] = [];
-let mockRedisStore: Record<string, string> = {};
-let mockIncrCounts: Record<string, number> = {};
+const mockRedisStore: Record<string, string> = {};
+const mockIncrCounts: Record<string, number> = {};
 
 // Mock Redis client
 jest.mock('../src/shared/redis/redis.client.js', () => ({
   redisClient: {
-    get: jest.fn().mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
+    get: jest
+      .fn()
+      .mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
     setex: jest.fn().mockImplementation(((key: any, _ttl: any, val: any) => {
       mockRedisStore[key] = val;
       mockRedisStore[`ts:${key}`] = val;
@@ -46,10 +48,14 @@ jest.mock('../src/shared/redis/redis.client.js', () => ({
         return Promise.resolve('fake_sha_hash');
       }
       if (cmd === 'evalsha' || cmd === 'eval') {
-        const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+        const key =
+          args.find(
+            (arg) =>
+              typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:')),
+          ) || 'unknown_key';
         const val = parseInt(mockRedisStore[key] || '0', 10) + 1;
         mockRedisStore[key] = val.toString();
-        return Promise.resolve([val, 60]); 
+        return Promise.resolve([val, 60]);
       }
       return Promise.resolve();
     }) as any),
@@ -60,7 +66,9 @@ jest.mock('../src/shared/redis/redis.client.js', () => ({
 // Mock Redis index entry point
 jest.mock('../src/shared/redis/index.js', () => ({
   redis: {
-    get: jest.fn().mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
+    get: jest
+      .fn()
+      .mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
     set: jest.fn().mockImplementation(((key: any, val: any) => {
       mockRedisStore[key] = val;
       return Promise.resolve('OK');
@@ -77,7 +85,9 @@ jest.mock('../src/shared/redis/index.js', () => ({
 // Mock ioredis completely
 jest.mock('ioredis', () => {
   return jest.fn().mockImplementation(() => ({
-    get: jest.fn().mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
+    get: jest
+      .fn()
+      .mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
     set: jest.fn().mockImplementation(((key: any, val: any) => {
       mockRedisStore[key] = val;
       return Promise.resolve('OK');
@@ -95,7 +105,7 @@ jest.mock('../src/shared/database/pool.js', () => {
         Promise.resolve({
           query: jest.fn().mockImplementation(() => Promise.resolve({ rows: [], rowCount: 0 })),
           release: jest.fn(),
-        })
+        }),
       ),
       end: jest.fn().mockImplementation(() => Promise.resolve()),
     },
@@ -104,7 +114,7 @@ jest.mock('../src/shared/database/pool.js', () => {
         Promise.resolve({
           query: jest.fn().mockImplementation(() => Promise.resolve({ rows: [], rowCount: 0 })),
           release: jest.fn(),
-        })
+        }),
       ),
       end: jest.fn().mockImplementation(() => Promise.resolve()),
     },
@@ -280,8 +290,12 @@ jest.mock('puppeteer', () => {
         newPage: jest.fn().mockImplementation(() => {
           return Promise.resolve({
             setContent: jest.fn().mockImplementation(() => Promise.resolve(undefined)),
-            setDefaultNavigationTimeout: jest.fn().mockImplementation(() => Promise.resolve(undefined)),
-            pdf: jest.fn().mockImplementation(() => Promise.resolve(Buffer.from('MOCK_PDF_BINARY_DATA'))),
+            setDefaultNavigationTimeout: jest
+              .fn()
+              .mockImplementation(() => Promise.resolve(undefined)),
+            pdf: jest
+              .fn()
+              .mockImplementation(() => Promise.resolve(Buffer.from('MOCK_PDF_BINARY_DATA'))),
             close: jest.fn().mockImplementation(() => Promise.resolve(undefined)),
           });
         }),
@@ -295,7 +309,9 @@ jest.mock('puppeteer', () => {
 jest.mock('bullmq', () => {
   return {
     Queue: jest.fn().mockImplementation(() => ({
-      add: jest.fn().mockImplementation(() => Promise.resolve({ id: 'mock-job-id', name: 'generate-report' })),
+      add: jest
+        .fn()
+        .mockImplementation(() => Promise.resolve({ id: 'mock-job-id', name: 'generate-report' })),
       getJobCounts: jest.fn().mockImplementation(() => Promise.resolve({ waiting: 0 })),
       on: jest.fn().mockImplementation(() => {}),
     })),
@@ -329,8 +345,14 @@ describe('TruthShield PDF Audit Reports Suite', () => {
 
     // Tokens
     starterToken = jwt.sign({ userId, orgId, role: 'admin' }, env.JWT_SECRET || 'test-secret');
-    growthToken = jwt.sign({ userId: 'user-growth', orgId: 'org-growth', role: 'admin' }, env.JWT_SECRET || 'test-secret');
-    proToken = jwt.sign({ userId: 'user-pro', orgId: 'org-pro', role: 'admin' }, env.JWT_SECRET || 'test-secret');
+    growthToken = jwt.sign(
+      { userId: 'user-growth', orgId: 'org-growth', role: 'admin' },
+      env.JWT_SECRET || 'test-secret',
+    );
+    proToken = jwt.sign(
+      { userId: 'user-pro', orgId: 'org-pro', role: 'admin' },
+      env.JWT_SECRET || 'test-secret',
+    );
   });
 
   afterAll(async () => {
@@ -430,9 +452,27 @@ describe('TruthShield PDF Audit Reports Suite', () => {
     it('Should fetch a paginated list of reports for the organization', async () => {
       // Mock existing reports
       mockReports = [
-        { id: 'rep-1', org_id: orgId, report_type: 'threat_summary', status: 'ready', created_at: new Date() },
-        { id: 'rep-2', org_id: orgId, report_type: 'threat_summary', status: 'failed', created_at: new Date() },
-        { id: 'rep-3', org_id: 'org-growth', report_type: 'threat_summary', status: 'ready', created_at: new Date() },
+        {
+          id: 'rep-1',
+          org_id: orgId,
+          report_type: 'threat_summary',
+          status: 'ready',
+          created_at: new Date(),
+        },
+        {
+          id: 'rep-2',
+          org_id: orgId,
+          report_type: 'threat_summary',
+          status: 'failed',
+          created_at: new Date(),
+        },
+        {
+          id: 'rep-3',
+          org_id: 'org-growth',
+          report_type: 'threat_summary',
+          status: 'ready',
+          created_at: new Date(),
+        },
       ];
 
       const res = await request(app)
@@ -449,15 +489,17 @@ describe('TruthShield PDF Audit Reports Suite', () => {
   describe('Journey 3: Report Worker processing enqueued PDF tasks', () => {
     it('Should process the job enqueued task, render PDF, save to S3, and trigger email dispatches', async () => {
       const reportId = 'report-1234';
-      mockReports = [{
-        id: reportId,
-        org_id: orgId,
-        requested_by: userId,
-        report_type: 'threat_summary',
-        status: 'generating',
-        date_range_start: new Date('2026-05-01'),
-        date_range_end: new Date('2026-05-15'),
-      }];
+      mockReports = [
+        {
+          id: reportId,
+          org_id: orgId,
+          requested_by: userId,
+          report_type: 'threat_summary',
+          status: 'generating',
+          date_range_start: new Date('2026-05-01'),
+          date_range_end: new Date('2026-05-15'),
+        },
+      ];
 
       const { ReportWorker } = await import('../src/shared/queue/report.worker.js');
       const worker = new ReportWorker();
@@ -475,15 +517,17 @@ describe('TruthShield PDF Audit Reports Suite', () => {
 
     it('Should handle execution failures gracefully and update status to failed', async () => {
       const reportId = 'report-fail';
-      mockReports = [{
-        id: reportId,
-        org_id: orgId,
-        requested_by: userId,
-        report_type: 'threat_summary',
-        status: 'generating',
-        date_range_start: new Date('2026-05-01'),
-        date_range_end: new Date('2026-05-15'),
-      }];
+      mockReports = [
+        {
+          id: reportId,
+          org_id: orgId,
+          requested_by: userId,
+          report_type: 'threat_summary',
+          status: 'generating',
+          date_range_start: new Date('2026-05-01'),
+          date_range_end: new Date('2026-05-15'),
+        },
+      ];
 
       const { ReportWorker } = await import('../src/shared/queue/report.worker.js');
       const worker = new ReportWorker();
@@ -502,15 +546,17 @@ describe('TruthShield PDF Audit Reports Suite', () => {
   describe('Journey 4: Accessing PDF Reports and Handling Expirations', () => {
     it('Should fetch a single report metadata and return its temporary secure download URL', async () => {
       const reportId = 'rep-ready';
-      mockReports = [{
-        id: reportId,
-        org_id: orgId,
-        requested_by: userId,
-        report_type: 'threat_summary',
-        status: 'ready',
-        expires_at: new Date(Date.now() + 120000), // In future
-        download_url: 'https://mock-s3-signed-url.com/report.pdf',
-      }];
+      mockReports = [
+        {
+          id: reportId,
+          org_id: orgId,
+          requested_by: userId,
+          report_type: 'threat_summary',
+          status: 'ready',
+          expires_at: new Date(Date.now() + 120000), // In future
+          download_url: 'https://mock-s3-signed-url.com/report.pdf',
+        },
+      ];
 
       const res = await request(app)
         .get(`/api/v1/reports/${reportId}`)
@@ -527,15 +573,17 @@ describe('TruthShield PDF Audit Reports Suite', () => {
 
     it('Should update status to "expired" and deny temporary links if report has passed its 24h expiration', async () => {
       const reportId = 'rep-expired';
-      mockReports = [{
-        id: reportId,
-        org_id: orgId,
-        requested_by: userId,
-        report_type: 'threat_summary',
-        status: 'ready',
-        expires_at: new Date(Date.now() - 10000), // Already expired
-        download_url: 'https://mock-s3-signed-url.com/report.pdf',
-      }];
+      mockReports = [
+        {
+          id: reportId,
+          org_id: orgId,
+          requested_by: userId,
+          report_type: 'threat_summary',
+          status: 'ready',
+          expires_at: new Date(Date.now() - 10000), // Already expired
+          download_url: 'https://mock-s3-signed-url.com/report.pdf',
+        },
+      ];
 
       const res = await request(app)
         .get(`/api/v1/reports/${reportId}`)
@@ -550,14 +598,16 @@ describe('TruthShield PDF Audit Reports Suite', () => {
   describe('Journey 5: Delete generated PDF reports', () => {
     it('Should securely delete S3 storage assets and remove the report DB record', async () => {
       const reportId = 'rep-delete';
-      mockReports = [{
-        id: reportId,
-        org_id: orgId,
-        requested_by: userId,
-        report_type: 'threat_summary',
-        status: 'ready',
-        s3_key: `${orgId}/reports/${reportId}.pdf`,
-      }];
+      mockReports = [
+        {
+          id: reportId,
+          org_id: orgId,
+          requested_by: userId,
+          report_type: 'threat_summary',
+          status: 'ready',
+          s3_key: `${orgId}/reports/${reportId}.pdf`,
+        },
+      ];
 
       const res = await request(app)
         .delete(`/api/v1/reports/${reportId}`)

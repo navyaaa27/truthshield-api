@@ -11,7 +11,7 @@ const redisOnline = true;
 
 // --- Mock Redis ---
 jest.mock('../../src/shared/redis/redis.client.js', () => {
-  const getFullKey = (key: string) => key.startsWith('ts:') ? key : `ts:${key}`;
+  const getFullKey = (key: string) => (key.startsWith('ts:') ? key : `ts:${key}`);
   return {
     redisClient: {
       get: jest.fn().mockImplementation(((key: any) => {
@@ -26,7 +26,7 @@ jest.mock('../../src/shared/redis/redis.client.js', () => {
       del: jest.fn().mockImplementation(((key: any) => {
         if (!redisOnline) return Promise.reject(new Error('Redis connection lost'));
         if (Array.isArray(key)) {
-          key.forEach(k => redisStore.delete(getFullKey(k)));
+          key.forEach((k) => redisStore.delete(getFullKey(k)));
         } else {
           redisStore.delete(getFullKey(key));
         }
@@ -62,7 +62,11 @@ jest.mock('../../src/shared/redis/redis.client.js', () => {
           return Promise.resolve('fake_sha_hash');
         }
         if (cmd === 'evalsha' || cmd === 'eval') {
-          const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+          const key =
+            args.find(
+              (arg) =>
+                typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:')),
+            ) || 'unknown_key';
           const fullKey = getFullKey(key);
           const val = parseInt(redisStore.get(fullKey) || '0', 10) + 1;
           redisStore.set(fullKey, val.toString());
@@ -78,7 +82,7 @@ jest.mock('../../src/shared/redis/redis.client.js', () => {
 });
 
 jest.mock('../../src/shared/redis/index.js', () => {
-  const getFullKey = (key: string) => key.startsWith('ts:') ? key : `ts:${key}`;
+  const getFullKey = (key: string) => (key.startsWith('ts:') ? key : `ts:${key}`);
   return {
     checkRedisHealth: jest.fn().mockImplementation(() => Promise.resolve(redisOnline)),
     redis: {
@@ -104,7 +108,9 @@ jest.mock('nodemailer', () => {
   return {
     createTransport: jest.fn().mockImplementation(() => {
       return {
-        sendMail: jest.fn().mockImplementation(() => Promise.resolve({ messageId: 'mock-mail-id' })),
+        sendMail: jest
+          .fn()
+          .mockImplementation(() => Promise.resolve({ messageId: 'mock-mail-id' })),
       };
     }),
   };
@@ -126,7 +132,10 @@ jest.mock('@aws-sdk/client-s3', () => {
     S3Client: jest.fn().mockImplementation(() => {
       return {
         send: jest.fn().mockImplementation((command: any) => {
-          if (command.constructor.name === 'HeadObjectCommand' || command.name === 'HeadObjectCommand') {
+          if (
+            command.constructor.name === 'HeadObjectCommand' ||
+            command.name === 'HeadObjectCommand'
+          ) {
             return Promise.resolve({
               ContentType: 'image/png',
               ContentLength: 4096,
@@ -136,10 +145,18 @@ jest.mock('@aws-sdk/client-s3', () => {
         }),
       };
     }),
-    PutObjectCommand: jest.fn().mockImplementation((input) => ({ constructor: { name: 'PutObjectCommand' }, input })),
-    GetObjectCommand: jest.fn().mockImplementation((input) => ({ constructor: { name: 'GetObjectCommand' }, input })),
-    HeadObjectCommand: jest.fn().mockImplementation((input) => ({ constructor: { name: 'HeadObjectCommand' }, input })),
-    DeleteObjectCommand: jest.fn().mockImplementation((input) => ({ constructor: { name: 'DeleteObjectCommand' }, input })),
+    PutObjectCommand: jest
+      .fn()
+      .mockImplementation((input) => ({ constructor: { name: 'PutObjectCommand' }, input })),
+    GetObjectCommand: jest
+      .fn()
+      .mockImplementation((input) => ({ constructor: { name: 'GetObjectCommand' }, input })),
+    HeadObjectCommand: jest
+      .fn()
+      .mockImplementation((input) => ({ constructor: { name: 'HeadObjectCommand' }, input })),
+    DeleteObjectCommand: jest
+      .fn()
+      .mockImplementation((input) => ({ constructor: { name: 'DeleteObjectCommand' }, input })),
   };
 });
 
@@ -227,7 +244,8 @@ jest.mock('../../src/shared/database/pool.js', () => {
       if (sql.includes('select * from detection_jobs') && sql.includes('id = $1')) {
         const id = p[0];
         const org_id = p[1];
-        const job = mockJobs.find((j) => j.id === id && (org_id ? j.org_id === org_id : true)) || null;
+        const job =
+          mockJobs.find((j) => j.id === id && (org_id ? j.org_id === org_id : true)) || null;
         return Promise.resolve({ rows: job ? [job] : [], rowCount: job ? 1 : 0 });
       }
 
@@ -258,14 +276,19 @@ jest.mock('../../src/shared/database/pool.js', () => {
       }
 
       // UPDATE detection_jobs (retry count)
-      if (sql.startsWith('update detection_jobs') && sql.includes('retry_count = retry_count + 1')) {
+      if (
+        sql.startsWith('update detection_jobs') &&
+        sql.includes('retry_count = retry_count + 1')
+      ) {
         const id = p[0];
         const job = mockJobs.find((j) => j.id === id);
         if (job) {
           job.retry_count += 1;
           job.updated_at = new Date();
           return Promise.resolve({
-            rows: [{ retry_count: job.retry_count, max_retries: job.max_retries, org_id: job.org_id }],
+            rows: [
+              { retry_count: job.retry_count, max_retries: job.max_retries, org_id: job.org_id },
+            ],
             rowCount: 1,
           });
         }
@@ -319,13 +342,13 @@ jest.mock('../../src/shared/database/pool.js', () => {
       // INSERT INTO alerts
       if (sql.startsWith('insert into alerts')) {
         const org_id = p[0];
-        const job_id = sql.includes('result_id') ? p[2] : (p[1] || p[2]);
+        const job_id = sql.includes('result_id') ? p[2] : p[1] || p[2];
         const message = sql.includes('message') ? p[2] : null;
         const newAlert = {
           id: `alert-uuid-${Math.random().toString(36).substr(2, 9)}`,
           org_id,
           job_id,
-          severity: sql.includes('critical') ? 'critical' : (p[3] || 'high'),
+          severity: sql.includes('critical') ? 'critical' : p[3] || 'high',
           title: message || p[4] || 'Security Alert Triggered',
           summary: p[5] || 'Forensic analysis identified high confidence tampering flags.',
           acknowledged_by: null,
@@ -342,7 +365,10 @@ jest.mock('../../src/shared/database/pool.js', () => {
       }
 
       // SELECT alerts count / lists
-      if ((sql.startsWith('select count(*)::int') || sql.includes('count(*)::int as count')) && sql.includes('from alerts')) {
+      if (
+        (sql.startsWith('select count(*)::int') || sql.includes('count(*)::int as count')) &&
+        sql.includes('from alerts')
+      ) {
         const orgId = p[0];
         const hasNull = sql.includes('acknowledged_at is null');
         const hasNotNull = sql.includes('acknowledged_at is not null');
@@ -355,13 +381,19 @@ jest.mock('../../src/shared/database/pool.js', () => {
         return Promise.resolve({ rows: [{ count: filtered.length }], rowCount: 1 });
       }
 
-      if (sql.includes('select * from alerts') && (sql.includes('where id = $1') || sql.includes('and id = $1'))) {
+      if (
+        sql.includes('select * from alerts') &&
+        (sql.includes('where id = $1') || sql.includes('and id = $1'))
+      ) {
         const id = p[0];
         const alert = mockAlerts.find((a) => a.id === id) || null;
         return Promise.resolve({ rows: alert ? [alert] : [], rowCount: alert ? 1 : 0 });
       }
 
-      if (sql.includes('select * from alerts') || (sql.includes('from alerts a') && !sql.includes('count('))) {
+      if (
+        sql.includes('select * from alerts') ||
+        (sql.includes('from alerts a') && !sql.includes('count('))
+      ) {
         const orgId = p[0];
         let filtered = mockAlerts.filter((a) => a.org_id === orgId);
         if (sql.includes('acknowledged_at is null')) {
@@ -404,7 +436,9 @@ jest.mock('../../src/shared/redis/index.js', () => {
   return {
     checkRedisHealth: jest.fn().mockImplementation(() => Promise.resolve(true)),
     redis: {
-      get: jest.fn().mockImplementation(((key: any) => Promise.resolve(redisStore.get(key) || null)) as any),
+      get: jest
+        .fn()
+        .mockImplementation(((key: any) => Promise.resolve(redisStore.get(key) || null)) as any),
       set: jest.fn().mockImplementation(((key: any, value: any) => {
         redisStore.set(key, value);
         return Promise.resolve('OK');
@@ -420,7 +454,9 @@ jest.mock('../../src/shared/redis/index.js', () => {
 jest.mock('../../src/shared/redis/redis.client.js', () => ({
   redisClient: {
     get: jest.fn().mockImplementation(((_key: any) => Promise.resolve(null)) as any),
-    setex: jest.fn().mockImplementation(((_key: any, _ttl: any, _val: any) => Promise.resolve('OK')) as any),
+    setex: jest
+      .fn()
+      .mockImplementation(((_key: any, _ttl: any, _val: any) => Promise.resolve('OK')) as any),
     del: jest.fn().mockImplementation(((_key: any) => Promise.resolve(1)) as any),
     keys: jest.fn().mockImplementation((() => Promise.resolve([])) as any),
     incr: jest.fn().mockImplementation((() => Promise.resolve(1)) as any),
@@ -431,10 +467,14 @@ jest.mock('../../src/shared/redis/redis.client.js', () => ({
         return Promise.resolve('fake_sha_hash');
       }
       if (cmd === 'evalsha' || cmd === 'eval') {
-        const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+        const key =
+          args.find(
+            (arg) =>
+              typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:')),
+          ) || 'unknown_key';
         const val = parseInt(redisStore.get(key) || '0', 10) + 1;
         redisStore.set(key, val.toString());
-        return Promise.resolve([val, 60]); 
+        return Promise.resolve([val, 60]);
       }
       return Promise.resolve();
     }) as any),
@@ -470,7 +510,10 @@ const mockQueueAdd = jest.fn().mockImplementation(((jobName: any, data: any) => 
           if (job) {
             job.status = 'processing';
           }
-          await (worker as any).handleFailure(mockBullJob as any, new Error('Forensic pipeline crash'));
+          await (worker as any).handleFailure(
+            mockBullJob as any,
+            new Error('Forensic pipeline crash'),
+          );
         } else {
           console.log('>>> [mockQueueAdd] executing worker process...');
           await worker.process(mockBullJob as any);
@@ -562,14 +605,32 @@ describe('TruthShield Phase 2 End-to-End Integration Suite', () => {
   const userIdB = 'user-uuid-b';
 
   // JWT Tokens
-  const userTokenA = jwt.sign({ userId: userIdA, orgId: orgIdA, role: 'viewer' }, env.JWT_SECRET, { expiresIn: '15m' });
-  const adminTokenA = jwt.sign({ userId: userIdA, orgId: orgIdA, role: 'admin' }, env.JWT_SECRET, { expiresIn: '15m' });
-  const userTokenB = jwt.sign({ userId: userIdB, orgId: orgIdB, role: 'viewer' }, env.JWT_SECRET, { expiresIn: '15m' });
+  const userTokenA = jwt.sign({ userId: userIdA, orgId: orgIdA, role: 'viewer' }, env.JWT_SECRET, {
+    expiresIn: '15m',
+  });
+  const adminTokenA = jwt.sign({ userId: userIdA, orgId: orgIdA, role: 'admin' }, env.JWT_SECRET, {
+    expiresIn: '15m',
+  });
+  const userTokenB = jwt.sign({ userId: userIdB, orgId: orgIdB, role: 'viewer' }, env.JWT_SECRET, {
+    expiresIn: '15m',
+  });
 
   beforeEach(() => {
     mockOrgs = [
-      { id: orgIdA, name: 'Org A', plan_tier: 'enterprise', email: 'admin@orga.com', source_metadata: {} },
-      { id: orgIdB, name: 'Org B', plan_tier: 'starter', email: 'admin@orgb.com', source_metadata: {} },
+      {
+        id: orgIdA,
+        name: 'Org A',
+        plan_tier: 'enterprise',
+        email: 'admin@orga.com',
+        source_metadata: {},
+      },
+      {
+        id: orgIdB,
+        name: 'Org B',
+        plan_tier: 'starter',
+        email: 'admin@orgb.com',
+        source_metadata: {},
+      },
     ];
     mockUsers = [
       { id: userIdA, org_id: orgIdA, email: 'user@orga.com', role: 'viewer' },
@@ -599,7 +660,7 @@ describe('TruthShield Phase 2 End-to-End Integration Suite', () => {
       expect(jobRes.status).toBe(201);
       expect(jobRes.body.uploadRequired).toBe(true);
       expect(jobRes.body.uploadInstructions.method).toBe('POST');
-      
+
       const jobId = jobRes.body.job.id;
 
       // 2. POST /uploads/presign with valid MIME
@@ -615,7 +676,7 @@ describe('TruthShield Phase 2 End-to-End Integration Suite', () => {
 
       expect(presignRes.status).toBe(200);
       expect(presignRes.body.uploadUrl).toBe('https://s3.amazonaws.com/mock-presigned-url');
-      
+
       const s3Key = presignRes.body.s3Key;
 
       // 3. POST /uploads/confirm to declare successful AWS transfer
@@ -657,12 +718,12 @@ describe('TruthShield Phase 2 End-to-End Integration Suite', () => {
       // 2. Poll job status until it reaches 'completed'
       let status = 'queued';
       const pollStart = Date.now();
-      
+
       while (status !== 'completed' && Date.now() - pollStart < 8000) {
         const checkRes = await request(app)
           .get(`/api/v1/jobs/${jobId}`)
           .set('Authorization', `Bearer ${userTokenA}`);
-        
+
         status = checkRes.body.job?.status;
         if (status !== 'completed') {
           await new Promise((resolve) => setTimeout(resolve, 100));
@@ -746,7 +807,7 @@ describe('TruthShield Phase 2 End-to-End Integration Suite', () => {
       console.log('mockAlerts:', mockAlerts);
       expect(listRes.body.alerts).toHaveLength(1);
       expect(listRes.body.alerts[0].severity).toBe('high');
-      
+
       const alertId = listRes.body.alerts[0].id;
 
       // 4. PATCH /alerts/:id/acknowledge to mark read
@@ -837,10 +898,18 @@ describe('TruthShield Phase 2 End-to-End Integration Suite', () => {
       const jobId = jobRes.body.job.id;
 
       // Wait for mock workers to run remaining attempts (1st is automatic upon creation, 2nd & 3rd are manual)
-      await mockQueueAdd('detection-task', { jobId, orgId: orgIdA, modules: ['metadata_tampering'] });
+      await mockQueueAdd('detection-task', {
+        jobId,
+        orgId: orgIdA,
+        modules: ['metadata_tampering'],
+      });
       await new Promise((resolve) => setTimeout(resolve, 20));
 
-      await mockQueueAdd('detection-task', { jobId, orgId: orgIdA, modules: ['metadata_tampering'] });
+      await mockQueueAdd('detection-task', {
+        jobId,
+        orgId: orgIdA,
+        modules: ['metadata_tampering'],
+      });
       await new Promise((resolve) => setTimeout(resolve, 20));
 
       // 2. Verify retry_count increments in DB

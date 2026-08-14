@@ -64,7 +64,11 @@ export async function checkDatabaseHealth(): Promise<DBHealthResult> {
       const lagRes = await readPool.query(`
         SELECT EXTRACT(EPOCH FROM (NOW() - pg_last_xact_replay_timestamp())) as lag
       `);
-      if (lagRes.rows.length > 0 && lagRes.rows[0].lag !== null && lagRes.rows[0].lag !== undefined) {
+      if (
+        lagRes.rows.length > 0 &&
+        lagRes.rows[0].lag !== null &&
+        lagRes.rows[0].lag !== undefined
+      ) {
         replicationLag = Number(lagRes.rows[0].lag);
       } else {
         replicationLag = 0;

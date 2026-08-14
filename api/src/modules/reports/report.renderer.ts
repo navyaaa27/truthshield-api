@@ -72,11 +72,21 @@ export class ReportRenderer {
     // 1. Identify required template sections
     let sections: string[] = [];
     if (reportType === 'threat_summary') {
-      sections = ['cover.hbs', 'executive_summary.hbs', 'threat_detail.hbs', 'metadata_section.hbs'];
+      sections = [
+        'cover.hbs',
+        'executive_summary.hbs',
+        'threat_detail.hbs',
+        'metadata_section.hbs',
+      ];
     } else if (reportType === 'job_detail') {
       sections = ['cover.hbs', 'threat_detail.hbs', 'metadata_section.hbs'];
     } else if (reportType === 'compliance_audit') {
-      sections = ['cover.hbs', 'executive_summary.hbs', 'threat_detail.hbs', 'metadata_section.hbs'];
+      sections = [
+        'cover.hbs',
+        'executive_summary.hbs',
+        'threat_detail.hbs',
+        'metadata_section.hbs',
+      ];
     } else if (reportType === 'dmca_bundle') {
       sections = ['cover.hbs', 'executive_summary.hbs', 'dmca_section.hbs', 'metadata_section.hbs'];
     } else {
@@ -90,7 +100,7 @@ export class ReportRenderer {
       const fileContent = await fs.readFile(filePath, 'utf-8');
       const compiled = handlebars.compile(fileContent);
       const renderedHtml = compiled({ ...data, reportType });
-      
+
       // Wrap each template with page breaks if it is not the cover page
       if (sectionFile === 'cover.hbs') {
         htmlChunks.push(`<div class="section-container">${renderedHtml}</div>`);

@@ -25,7 +25,8 @@ export function isPrivateIp(ip: string): boolean {
     if (parts[0] === 169 && parts[1] === 254) return true;
   } else {
     if (cleanIp === '::1' || cleanIp === '0:0:0:0:0:0:0:1') return true;
-    if (cleanIp.toLowerCase().startsWith('fc') || cleanIp.toLowerCase().startsWith('fd')) return true;
+    if (cleanIp.toLowerCase().startsWith('fc') || cleanIp.toLowerCase().startsWith('fd'))
+      return true;
     if (cleanIp.toLowerCase().startsWith('fe8')) return true;
   }
   return false;
@@ -49,13 +50,17 @@ export async function validateUrlSafety(targetUrl: string): Promise<boolean> {
 
     const resolveDns = (host: string): Promise<string[]> => {
       return new Promise((resolve) => {
-        dns.lookup(host, { all: true }, (err: Error | null, addresses: dns.LookupAddress[] | undefined) => {
-          if (err || !addresses) {
-            resolve([]);
-          } else {
-            resolve(addresses.map((a: dns.LookupAddress) => a.address));
-          }
-        });
+        dns.lookup(
+          host,
+          { all: true },
+          (err: Error | null, addresses: dns.LookupAddress[] | undefined) => {
+            if (err || !addresses) {
+              resolve([]);
+            } else {
+              resolve(addresses.map((a: dns.LookupAddress) => a.address));
+            }
+          },
+        );
       });
     };
 
@@ -92,7 +97,9 @@ export class WebhookService {
     const { webhookUrl, event, payload, orgId, jobId } = params;
 
     // Use parameters in debug logging to satisfy TypeScript unused variable checks
-    logger.info(`[WebhookService] Processing webhook event '${event}' for Org: ${orgId}, Job: ${jobId}`);
+    logger.info(
+      `[WebhookService] Processing webhook event '${event}' for Org: ${orgId}, Job: ${jobId}`,
+    );
 
     // 1. SSRF Safety Check
     const isSafe = await validateUrlSafety(webhookUrl);
@@ -104,7 +111,10 @@ export class WebhookService {
     const timestamp = Date.now().toString();
     const body = JSON.stringify(payload);
     const secret = process.env.WEBHOOK_SECRET || 'ts_webhook_secret_default_2026';
-    const signature = crypto.createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex');
+    const signature = crypto
+      .createHmac('sha256', secret)
+      .update(`${timestamp}.${body}`)
+      .digest('hex');
 
     const headers = {
       'Content-Type': 'application/json',
@@ -119,7 +129,9 @@ export class WebhookService {
 
     while (attempt < maxAttempts) {
       attempt++;
-      logger.info(`[WebhookService] Sending event '${event}' to ${webhookUrl} (Attempt ${attempt}/${maxAttempts})`);
+      logger.info(
+        `[WebhookService] Sending event '${event}' to ${webhookUrl} (Attempt ${attempt}/${maxAttempts})`,
+      );
 
       try {
         if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined) {
@@ -129,7 +141,9 @@ export class WebhookService {
             headers,
           };
           (global as any).lastWebhookPost = WebhookService.lastWebhookPost;
-          logger.info(`[WebhookService] Test Mode: Event '${event}' mock-delivered successfully to ${webhookUrl}`);
+          logger.info(
+            `[WebhookService] Test Mode: Event '${event}' mock-delivered successfully to ${webhookUrl}`,
+          );
           return;
         }
 
@@ -138,7 +152,9 @@ export class WebhookService {
           timeout: 10000, // 10 seconds timeout
         });
 
-        logger.info(`[WebhookService] Event '${event}' delivered successfully (Status: ${response.status})`);
+        logger.info(
+          `[WebhookService] Event '${event}' delivered successfully (Status: ${response.status})`,
+        );
         return;
       } catch (err: any) {
         const status = err.response?.status;
@@ -147,7 +163,9 @@ export class WebhookService {
 
         // Halt immediately on non-retryable 4xx client errors
         if (status && status >= 400 && status < 500) {
-          logger.error(`[WebhookService] 4xx Client Error (${status}) encountered. Delivery stopped.`);
+          logger.error(
+            `[WebhookService] 4xx Client Error (${status}) encountered. Delivery stopped.`,
+          );
           break;
         }
 

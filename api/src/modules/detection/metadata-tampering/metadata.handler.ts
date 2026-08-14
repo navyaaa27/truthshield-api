@@ -47,7 +47,7 @@ export async function handleMetadataTampering(job: any): Promise<any> {
       processingTimeMs,
       JSON.stringify(analysisResult.details),
       analysisResult.flags,
-    ]
+    ],
   );
 
   return dbRes.rows[0];

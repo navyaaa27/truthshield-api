@@ -11,7 +11,7 @@ export async function dispatchJob(job: DetectionJob): Promise<void> {
   // 1. Validate: Only pending jobs can be dispatched
   if (job.status !== 'pending') {
     throw new ValidationError(
-      `Only pending jobs can be dispatched to queue. Current status: '${job.status}'`
+      `Only pending jobs can be dispatched to queue. Current status: '${job.status}'`,
     );
   }
 
@@ -27,8 +27,10 @@ export async function dispatchJob(job: DetectionJob): Promise<void> {
       orgId: job.org_id,
       detectionModules: job.detection_modules,
     },
-    job.priority
+    job.priority,
   );
 
-  logger.info(`Job ${job.id} successfully dispatched to detectionQueue (Priority: ${job.priority})`);
+  logger.info(
+    `Job ${job.id} successfully dispatched to detectionQueue (Priority: ${job.priority})`,
+  );
 }

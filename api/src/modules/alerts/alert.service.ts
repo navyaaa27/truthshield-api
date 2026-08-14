@@ -13,7 +13,7 @@ export class AlertService {
     // 1. Fetch all detection_results for this jobId
     const resultsRes = await query(
       `SELECT * FROM detection_results WHERE job_id = $1 AND org_id = $2`,
-      [jobId, orgId]
+      [jobId, orgId],
     );
     const results = resultsRes.rows;
 
@@ -21,7 +21,7 @@ export class AlertService {
 
     for (const res of results) {
       const score = Number(res.score);
-      
+
       // Skip results with score < 25 (no alert needed)
       if (score < 25) {
         continue;
@@ -69,7 +69,7 @@ export class AlertService {
         )
         VALUES ($1, $2, $3, $4, $5, $6, false, '{}')
         RETURNING *`,
-        [orgId, res.id, jobId, severity, title, summary]
+        [orgId, res.id, jobId, severity, title, summary],
       );
 
       const alert = insertRes.rows[0];
@@ -105,14 +105,14 @@ export class AlertService {
        SET acknowledged_by = $1, acknowledged_at = NOW(), updated_at = NOW() 
        WHERE id = $2 
        RETURNING *`,
-      [userId, alertId]
+      [userId, alertId],
     );
 
     // Log to audit logs
     await query(
       `INSERT INTO audit_logs (org_id, user_id, action, resource_type, resource_id)
        VALUES ($1, $2, 'ALERT_ACKNOWLEDGED', 'alerts', $3)`,
-      [orgId, userId, alertId]
+      [orgId, userId, alertId],
     );
 
     logger.info(`Alert ${alertId} acknowledged by user ${userId}`);
@@ -143,14 +143,14 @@ export class AlertService {
        SET resolved_by = $1, resolved_at = NOW(), updated_at = NOW() 
        WHERE id = $2 
        RETURNING *`,
-      [userId, alertId]
+      [userId, alertId],
     );
 
     // Log to audit logs
     await query(
       `INSERT INTO audit_logs (org_id, user_id, action, resource_type, resource_id)
        VALUES ($1, $2, 'ALERT_RESOLVED', 'alerts', $3)`,
-      [orgId, userId, alertId]
+      [orgId, userId, alertId],
     );
 
     logger.info(`Alert ${alertId} resolved by user ${userId}`);
@@ -162,7 +162,7 @@ export class AlertService {
    */
   static async getAlerts(
     orgId: string,
-    filters: AlertFilters
+    filters: AlertFilters,
   ): Promise<{ alerts: Alert[]; total: number; unreadCount: number }> {
     const { severity, acknowledged, page = 1, limit = 10 } = filters;
     const offset = (page - 1) * limit;
@@ -188,16 +188,19 @@ export class AlertService {
     // Unread count is total unacknowledged alerts for this org
     const unreadRes = await query(
       `SELECT COUNT(*)::int as count FROM alerts WHERE org_id = $1 AND acknowledged_at IS NULL`,
-      [orgId]
+      [orgId],
     );
     const unreadCount = unreadRes.rows[0].count;
 
     // Total count for filters
-    const totalRes = await query(`
+    const totalRes = await query(
+      `
       SELECT COUNT(*)::int as count 
       FROM alerts a
       ${baseFilter}
-    `, params);
+    `,
+      params,
+    );
     const total = totalRes.rows[0].count;
 
     // Fetch paginated results ordered by creation date desc
@@ -230,7 +233,7 @@ export class AlertService {
   static async generateAlertsForJob(
     jobId: string,
     orgId: string,
-    aggregation: JobAggregation
+    aggregation: JobAggregation,
   ): Promise<Alert[]> {
     // No alert for 'none' risk level
     if (aggregation.riskLevel === 'none') {
@@ -287,7 +290,7 @@ export class AlertService {
       )
       VALUES ($1, $2, $3, $4, $5, false, '{}')
       RETURNING *`,
-      [orgId, jobId, severity, title, summaryText]
+      [orgId, jobId, severity, title, summaryText],
     );
 
     const alert = insertRes.rows[0];

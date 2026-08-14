@@ -16,7 +16,9 @@ const setupQueueListeners = (queue: Queue, name: string) => {
   queue.on('waiting', async (job) => {
     try {
       const counts = await queue.getJobCounts();
-      logger.info(`BullMQ Queue '${name}' job '${job.id}' is waiting. Waiting count: ${counts.waiting}`);
+      logger.info(
+        `BullMQ Queue '${name}' job '${job.id}' is waiting. Waiting count: ${counts.waiting}`,
+      );
     } catch {}
   });
 };
@@ -24,7 +26,11 @@ const setupQueueListeners = (queue: Queue, name: string) => {
 if (process.env.NODE_ENV === 'test' && typeof (Queue as any).mock === 'undefined') {
   const mockQueue = (name: string) => ({
     name,
-    add: async (_jobName: string, data: any, opts: any) => ({ id: opts?.jobId || 'mock-id', data, opts }),
+    add: async (_jobName: string, data: any, opts: any) => ({
+      id: opts?.jobId || 'mock-id',
+      data,
+      opts,
+    }),
     getJobCounts: async () => ({ waiting: 0 }),
     on: () => {},
   });
@@ -51,7 +57,7 @@ export async function addDetectionJob(
   jobId: string,
   orgId: string,
   payload: any,
-  priority = 5
+  priority = 5,
 ): Promise<any> {
   const job = await detectionQueue.add(
     'detection-task',
@@ -59,7 +65,7 @@ export async function addDetectionJob(
     {
       jobId, // Idempotent deduplication identifier
       priority, // Priority support (1-10)
-    }
+    },
   );
   logger.info(`Job added to detectionQueue: ${jobId} (Org: ${orgId}, Priority: ${priority})`);
   return job;

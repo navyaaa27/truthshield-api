@@ -20,7 +20,9 @@ async function bootstrap() {
         dbClient.release();
         logger.info('PostgreSQL connection established successfully.');
       } catch (err: any) {
-        logger.warn(`Could not connect to PostgreSQL: ${err.message}. Server starting in offline mode.`);
+        logger.warn(
+          `Could not connect to PostgreSQL: ${err.message}. Server starting in offline mode.`,
+        );
       }
     } else {
       logger.warn('MOCK_INFRA is enabled. Skipping PostgreSQL startup verification.');

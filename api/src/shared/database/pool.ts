@@ -1,7 +1,12 @@
 import pg from 'pg';
 import { env } from '../../config/env.js';
 import { logger } from '../../utils/logger.js';
-import { dbPoolIdle, dbPoolSize, dbPoolWaiting, dbQueryDurationMs } from '../metrics/metrics.service.js';
+import {
+  dbPoolIdle,
+  dbPoolSize,
+  dbPoolWaiting,
+  dbQueryDurationMs,
+} from '../metrics/metrics.service.js';
 
 const { Pool } = pg;
 
@@ -99,7 +104,7 @@ export async function testConnection(): Promise<void> {
 export async function queryWithMetrics<T extends pg.QueryResultRow = any>(
   sql: string,
   params: unknown[],
-  context?: { module?: string; operation?: string }
+  context?: { module?: string; operation?: string },
 ): Promise<pg.QueryResult<T>> {
   const start = Date.now();
   const sqlVerb = sql.trimStart().split(/\s+/)[0]?.toUpperCase() || 'UNKNOWN';
@@ -131,7 +136,9 @@ export async function queryWithMetrics<T extends pg.QueryResultRow = any>(
 
     // Debug logging in development only
     if (env.QUERY_LOG_ENABLED && env.NODE_ENV === 'development') {
-      logger.debug(`[DB Query] Duration: ${duration}ms | SQL: ${sql} | Params: ${JSON.stringify(params)}`);
+      logger.debug(
+        `[DB Query] Duration: ${duration}ms | SQL: ${sql} | Params: ${JSON.stringify(params)}`,
+      );
     }
 
     // Slow query detection
@@ -143,8 +150,8 @@ export async function queryWithMetrics<T extends pg.QueryResultRow = any>(
 
       logger.warn(
         `🐌 Slow database query detected (${duration}ms) | SQL: "${truncatedSql}" | Params count: ${paramsCount} | Context: ${JSON.stringify(
-          context || {}
-        )} | Stack Trace:\n${stackTrace}`
+          context || {},
+        )} | Stack Trace:\n${stackTrace}`,
       );
     }
 
@@ -160,7 +167,7 @@ export async function queryWithMetrics<T extends pg.QueryResultRow = any>(
  */
 export async function query<T extends pg.QueryResultRow = any>(
   sql: string,
-  params?: any[]
+  params?: any[],
 ): Promise<pg.QueryResult<T>> {
   return queryWithMetrics<T>(sql, params || []);
 }
@@ -170,7 +177,7 @@ export async function query<T extends pg.QueryResultRow = any>(
  */
 export async function queryWrite<T extends pg.QueryResultRow = any>(
   sql: string,
-  params?: any[]
+  params?: any[],
 ): Promise<pg.QueryResult<T>> {
   const start = Date.now();
   const sqlVerb = sql.trimStart().split(/\s+/)[0]?.toUpperCase() || 'UNKNOWN';
@@ -187,7 +194,7 @@ export async function queryWrite<T extends pg.QueryResultRow = any>(
       const truncatedSql = sql.length > 200 ? `${sql.substring(0, 200)}...` : sql;
       const paramsCount = params ? params.length : 0;
       logger.warn(
-        `🐌 Slow database writePool query detected (${duration}ms) | SQL: "${truncatedSql}" | Params count: ${paramsCount}`
+        `🐌 Slow database writePool query detected (${duration}ms) | SQL: "${truncatedSql}" | Params count: ${paramsCount}`,
       );
     }
 
@@ -208,7 +215,7 @@ export const pool = writePool;
  */
 export async function transaction<T>(
   callback: (client: pg.PoolClient) => Promise<T>,
-  isolationLevel: 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE' = 'READ COMMITTED'
+  isolationLevel: 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE' = 'READ COMMITTED',
 ): Promise<T> {
   const client = await writePool.connect();
   try {

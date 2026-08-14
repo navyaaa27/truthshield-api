@@ -24,7 +24,7 @@ export class ArticleScraper {
     'private-eye.co.uk',
     'thepeele.com',
     'satireworld.com',
-    'dailycurrant.com'
+    'dailycurrant.com',
   ];
 
   private readonly KNOWN_MISINFO_SITES = [
@@ -47,7 +47,7 @@ export class ArticleScraper {
     'worldnewsdailyreport.com',
     'conservativetribune.com',
     'sputniknews.com',
-    'rt.com'
+    'rt.com',
   ];
 
   /**
@@ -83,16 +83,20 @@ export class ArticleScraper {
     title = title.trim();
 
     // 4. Extract author: meta tags -> byline text patterns
-    let author: string | null = $('meta[name="author"]').attr('content') || 
-                 $('meta[property="article:author"]').attr('content') || '';
+    let author: string | null =
+      $('meta[name="author"]').attr('content') ||
+      $('meta[property="article:author"]').attr('content') ||
+      '';
     if (!author) {
       author = $('.author, [class*="author"], .byline, [class*="byline"]').first().text() || '';
     }
     author = author.trim() || null;
 
     // 5. Extract publish date
-    let publishDate: string | null = $('meta[property="article:published_time"]').attr('content') || 
-                      $('meta[name="publish-date"]').attr('content') || '';
+    let publishDate: string | null =
+      $('meta[property="article:published_time"]').attr('content') ||
+      $('meta[name="publish-date"]').attr('content') ||
+      '';
     if (!publishDate) {
       publishDate = $('time').attr('datetime') || $('time').first().text() || '';
     }
@@ -133,7 +137,10 @@ export class ArticleScraper {
    * and security transport protocols.
    */
   async checkDomainCredibility(domain: string, isHttps = true): Promise<DomainInfo> {
-    const cleanDomain = domain.toLowerCase().trim().replace(/^www\./, '');
+    const cleanDomain = domain
+      .toLowerCase()
+      .trim()
+      .replace(/^www\./, '');
     let credibilityScore = 70; // Starting baseline
 
     const isKnownSatire = this.KNOWN_SATIRE_SITES.includes(cleanDomain);
@@ -151,7 +158,7 @@ export class ArticleScraper {
     }
 
     // Default mock age constraints (no external WHOIS queries in Phase 3)
-    const domainAge = '5 years'; 
+    const domainAge = '5 years';
 
     return {
       domain: cleanDomain,

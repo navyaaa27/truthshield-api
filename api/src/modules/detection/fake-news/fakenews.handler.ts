@@ -14,10 +14,13 @@ export async function handleFakeNews(job: any): Promise<any> {
 
   // Retrieve input content from either source_url or source_metadata
   const sourceUrl = job.source_url || (job.source_metadata as any)?.sourceUrl || null;
-  const rawText = (job.source_metadata as any)?.rawText || (job.source_metadata as any)?.text || null;
+  const rawText =
+    (job.source_metadata as any)?.rawText || (job.source_metadata as any)?.text || null;
 
   if (!sourceUrl && !rawText) {
-    throw new Error(`Job ${jobId} does not contain sourceUrl or rawText required for fake news verification.`);
+    throw new Error(
+      `Job ${jobId} does not contain sourceUrl or rawText required for fake news verification.`,
+    );
   }
 
   // 1. Run Analysis
@@ -51,8 +54,8 @@ export async function handleFakeNews(job: any): Promise<any> {
       env.FAKE_NEWS_MODEL_VERSION || 'fake-news-analyzer-v1.0',
       processingTimeMs,
       JSON.stringify(result),
-      result.flags
-    ]
+      result.flags,
+    ],
   );
 
   return dbRes.rows[0];

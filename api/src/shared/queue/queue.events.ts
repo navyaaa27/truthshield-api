@@ -14,10 +14,12 @@ detectionEvents.on('failed', ({ jobId, failedReason }) => {
 });
 
 detectionEvents.on('stalled', async ({ jobId }) => {
-  logger.warn(`Job stalled on detectionQueue: ${jobId}. Automatically setting status to 'failed' in DB`);
+  logger.warn(
+    `Job stalled on detectionQueue: ${jobId}. Automatically setting status to 'failed' in DB`,
+  );
   try {
-    await JobModel.updateJobStatus(jobId, 'failed', { 
-      errorMessage: 'Detection job stalled in worker execution queue' 
+    await JobModel.updateJobStatus(jobId, 'failed', {
+      errorMessage: 'Detection job stalled in worker execution queue',
     });
   } catch (err: any) {
     logger.error(`Failed to mark stalled job ${jobId} as failed: ${err.message}`);

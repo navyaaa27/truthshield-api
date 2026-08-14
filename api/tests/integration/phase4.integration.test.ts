@@ -30,7 +30,7 @@ let dbLatencyMs = 0;
 
 // --- Mock Redis ---
 jest.mock('../../src/shared/redis/redis.client.js', () => {
-  const getFullKey = (key: string) => key.startsWith('ts:') ? key : `ts:${key}`;
+  const getFullKey = (key: string) => (key.startsWith('ts:') ? key : `ts:${key}`);
   return {
     redisClient: {
       get: jest.fn().mockImplementation(((key: any) => {
@@ -45,7 +45,7 @@ jest.mock('../../src/shared/redis/redis.client.js', () => {
       del: jest.fn().mockImplementation(((key: any) => {
         if (!redisOnline) return Promise.reject(new Error('Redis connection lost'));
         if (Array.isArray(key)) {
-          key.forEach(k => redisStore.delete(getFullKey(k)));
+          key.forEach((k) => redisStore.delete(getFullKey(k)));
         } else {
           redisStore.delete(getFullKey(key));
         }
@@ -81,7 +81,11 @@ jest.mock('../../src/shared/redis/redis.client.js', () => {
           return Promise.resolve('fake_sha_hash');
         }
         if (cmd === 'evalsha' || cmd === 'eval') {
-          const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+          const key =
+            args.find(
+              (arg) =>
+                typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:')),
+            ) || 'unknown_key';
           const fullKey = getFullKey(key);
           const val = parseInt(redisStore.get(fullKey) || '0', 10) + 1;
           redisStore.set(fullKey, val.toString());
@@ -97,7 +101,7 @@ jest.mock('../../src/shared/redis/redis.client.js', () => {
 });
 
 jest.mock('../../src/shared/redis/index.js', () => {
-  const getFullKey = (key: string) => key.startsWith('ts:') ? key : `ts:${key}`;
+  const getFullKey = (key: string) => (key.startsWith('ts:') ? key : `ts:${key}`);
   return {
     checkRedisHealth: jest.fn().mockImplementation(() => Promise.resolve(redisOnline)),
     redis: {
@@ -164,7 +168,10 @@ const mockDbQuery = async (text: any, params?: any[]) => {
   }
 
   // SELECT organizations
-  if (sql.includes('from organizations') && (sql.includes('where id = $1') || sql.includes('id = $1'))) {
+  if (
+    sql.includes('from organizations') &&
+    (sql.includes('where id = $1') || sql.includes('id = $1'))
+  ) {
     const id = p[0];
     const org = mockOrgs.find((o) => o.id === id) || null;
     return Promise.resolve({ rows: org ? [org] : [], rowCount: org ? 1 : 0 });
@@ -174,7 +181,12 @@ const mockDbQuery = async (text: any, params?: any[]) => {
   if (sql.includes('insert into organizations')) {
     const name = p[0];
     const planTier = p[1] || 'starter';
-    const newOrg = { id: `org-uuid-${Math.random().toString(36).substring(2, 11)}`, name, plan_tier: planTier, is_active: true };
+    const newOrg = {
+      id: `org-uuid-${Math.random().toString(36).substring(2, 11)}`,
+      name,
+      plan_tier: planTier,
+      is_active: true,
+    };
     mockOrgs.push(newOrg);
     return Promise.resolve({ rows: [newOrg], rowCount: 1 });
   }
@@ -191,13 +203,21 @@ const mockDbQuery = async (text: any, params?: any[]) => {
     if (sql.includes('count(')) {
       return Promise.resolve({ rows: [{ count: String(mockReviews.length) }], rowCount: 1 });
     }
-    if (sql.includes('where hr.id = $1') || sql.includes('where id = $1') || sql.includes('hr.id = $1')) {
+    if (
+      sql.includes('where hr.id = $1') ||
+      sql.includes('where id = $1') ||
+      sql.includes('hr.id = $1')
+    ) {
       const id = p[0];
       const review = mockReviews.find((r) => r.id === id) || null;
       return Promise.resolve({ rows: review ? [review] : [], rowCount: review ? 1 : 0 });
     }
     if (sql.includes('sla_deadline < now()') || sql.includes('sla_deadline <')) {
-      const expired = mockReviews.filter((r) => r.sla_deadline < new Date() && !['completed', 'auto_resolved', 'escalated'].includes(r.status));
+      const expired = mockReviews.filter(
+        (r) =>
+          r.sla_deadline < new Date() &&
+          !['completed', 'auto_resolved', 'escalated'].includes(r.status),
+      );
       return Promise.resolve({ rows: expired, rowCount: expired.length });
     }
     return Promise.resolve({ rows: mockReviews, rowCount: mockReviews.length });
@@ -241,7 +261,7 @@ const mockDbQuery = async (text: any, params?: any[]) => {
       if (status === 'assigned') review.assigned_to = assigned_to || p[0];
       if (status === 'auto_resolved') {
         review.reviewer_verdict = review.ai_verdict;
-        const res = mockResults.find(r => r.id === review.result_id);
+        const res = mockResults.find((r) => r.id === review.result_id);
         if (res) {
           res.flags = [...(res.flags || []), 'auto_resolved_sla_breach'];
         }
@@ -251,49 +271,54 @@ const mockDbQuery = async (text: any, params?: any[]) => {
     return Promise.resolve({ rows: [], rowCount: 0 });
   }
 
-      // SELECT jobs
-      if (sql.includes('from detection_jobs')) {
-        if (sql.includes('count(')) {
-          const orgId = p[0];
-          const jobs = mockJobs.filter((j) => j.org_id === orgId);
-          return Promise.resolve({ rows: [{ total: String(jobs.length) }], rowCount: 1 });
-        }
-        if (sql.includes('where id = $1') && sql.includes('org_id = $2')) {
-          const id = p[0];
-          const orgId = p[1];
-          const job = mockJobs.find((j) => j.id === id && j.org_id === orgId) || null;
-          return Promise.resolve({ rows: job ? [job] : [], rowCount: job ? 1 : 0 });
-        }
-        if (sql.includes('where id = $1') || sql.includes('where j.id = $1')) {
-          const id = p[0];
-          const job = mockJobs.find((j) => j.id === id) || null;
-          return Promise.resolve({ rows: job ? [job] : [], rowCount: job ? 1 : 0 });
-        }
-        const orgId = p[0];
-        const jobs = mockJobs.filter((j) => j.org_id === orgId);
-        return Promise.resolve({ rows: jobs, rowCount: jobs.length });
-      }
+  // SELECT jobs
+  if (sql.includes('from detection_jobs')) {
+    if (sql.includes('count(')) {
+      const orgId = p[0];
+      const jobs = mockJobs.filter((j) => j.org_id === orgId);
+      return Promise.resolve({ rows: [{ total: String(jobs.length) }], rowCount: 1 });
+    }
+    if (sql.includes('where id = $1') && sql.includes('org_id = $2')) {
+      const id = p[0];
+      const orgId = p[1];
+      const job = mockJobs.find((j) => j.id === id && j.org_id === orgId) || null;
+      return Promise.resolve({ rows: job ? [job] : [], rowCount: job ? 1 : 0 });
+    }
+    if (sql.includes('where id = $1') || sql.includes('where j.id = $1')) {
+      const id = p[0];
+      const job = mockJobs.find((j) => j.id === id) || null;
+      return Promise.resolve({ rows: job ? [job] : [], rowCount: job ? 1 : 0 });
+    }
+    const orgId = p[0];
+    const jobs = mockJobs.filter((j) => j.org_id === orgId);
+    return Promise.resolve({ rows: jobs, rowCount: jobs.length });
+  }
 
-      // SELECT results
-      if (sql.includes('from detection_results')) {
-        if (sql.includes('job_id = $1') || sql.includes('job_id =')) {
-          const jobId = p[0];
-          const results = mockResults.filter((r) => r.job_id === jobId);
-          return Promise.resolve({ rows: results, rowCount: results.length });
-        }
-        if (sql.includes('where id = $1') || sql.includes('where result_id =') || sql.includes('hr.result_id =')) {
-          const id = p[0];
-          const result = mockResults.find((r) => r.id === id) || null;
-          return Promise.resolve({ rows: result ? [result] : [], rowCount: result ? 1 : 0 });
-        }
-        return Promise.resolve({ rows: mockResults, rowCount: mockResults.length });
-      }
+  // SELECT results
+  if (sql.includes('from detection_results')) {
+    if (sql.includes('job_id = $1') || sql.includes('job_id =')) {
+      const jobId = p[0];
+      const results = mockResults.filter((r) => r.job_id === jobId);
+      return Promise.resolve({ rows: results, rowCount: results.length });
+    }
+    if (
+      sql.includes('where id = $1') ||
+      sql.includes('where result_id =') ||
+      sql.includes('hr.result_id =')
+    ) {
+      const id = p[0];
+      const result = mockResults.find((r) => r.id === id) || null;
+      return Promise.resolve({ rows: result ? [result] : [], rowCount: result ? 1 : 0 });
+    }
+    return Promise.resolve({ rows: mockResults, rowCount: mockResults.length });
+  }
 
   // SELECT alerts
   if (sql.includes('from alerts')) {
     if (sql.includes('count(')) {
-      const unreadOnly = sql.includes('acknowledged_at is null') || sql.includes('acknowledged_at = null');
-      const filtered = mockAlerts.filter(a => unreadOnly ? !a.acknowledged_at : true);
+      const unreadOnly =
+        sql.includes('acknowledged_at is null') || sql.includes('acknowledged_at = null');
+      const filtered = mockAlerts.filter((a) => (unreadOnly ? !a.acknowledged_at : true));
       return Promise.resolve({ rows: [{ count: String(filtered.length) }], rowCount: 1 });
     }
     return Promise.resolve({ rows: mockAlerts, rowCount: mockAlerts.length });
@@ -314,7 +339,7 @@ const mockDbQuery = async (text: any, params?: any[]) => {
       verdict,
       org_id: orgId,
       flags: [],
-      created_at: new Date()
+      created_at: new Date(),
     };
     mockResults.push(newRes);
 
@@ -331,7 +356,7 @@ const mockDbQuery = async (text: any, params?: any[]) => {
         ai_verdict: verdict,
         sla_deadline: new Date(Date.now() + 24 * 3600 * 1000),
         assigned_to: null,
-        created_at: new Date()
+        created_at: new Date(),
       });
     }
     return Promise.resolve({ rows: [newRes], rowCount: 1 });
@@ -342,7 +367,7 @@ const mockDbQuery = async (text: any, params?: any[]) => {
     const verdict = p[0];
     const flags = p[1];
     const id = p[4];
-    const res = mockResults.find(r => r.id === id);
+    const res = mockResults.find((r) => r.id === id);
     if (res) {
       res.verdict = verdict;
       res.flags = flags;
@@ -366,7 +391,7 @@ const mockDbQuery = async (text: any, params?: any[]) => {
       status: 'pending',
       priority,
       created_at: new Date(),
-      updated_at: new Date()
+      updated_at: new Date(),
     };
     mockJobs.push(newJob);
     return Promise.resolve({ rows: [newJob], rowCount: 1 });
@@ -378,14 +403,14 @@ const mockDbQuery = async (text: any, params?: any[]) => {
     if (sql.includes('status = $1') && sql.includes('where id = $2')) {
       const status = p[0];
       id = p[1];
-      const job = mockJobs.find(j => j.id === id);
+      const job = mockJobs.find((j) => j.id === id);
       if (job) job.status = status;
     } else {
       const score = p[0];
       const verdict = p[1];
       const risk = p[2];
       id = p[3];
-      const job = mockJobs.find(j => j.id === id);
+      const job = mockJobs.find((j) => j.id === id);
       if (job) {
         job.aggregated_score = score;
         job.aggregated_verdict = verdict;
@@ -402,14 +427,24 @@ const mockDbQuery = async (text: any, params?: any[]) => {
     const resultId = p[2];
     let severity = 'high';
     let title = 'SLA Breach: Auto-Resolved Review';
-    let summary = 'A human review task breached its SLA deadline and was automatically resolved with the original AI verdict.';
-    
+    let summary =
+      'A human review task breached its SLA deadline and was automatically resolved with the original AI verdict.';
+
     if (sql.includes('values ($1, $2, $3, $4, $5, $6')) {
       severity = p[3];
       title = p[4];
       summary = p[5];
     }
-    const newAlert = { id: `alert-uuid-${Math.random().toString(36).substring(2, 11)}`, org_id: orgId, job_id: jobId, result_id: resultId, severity, title, summary, created_at: new Date() };
+    const newAlert = {
+      id: `alert-uuid-${Math.random().toString(36).substring(2, 11)}`,
+      org_id: orgId,
+      job_id: jobId,
+      result_id: resultId,
+      severity,
+      title,
+      summary,
+      created_at: new Date(),
+    };
     mockAlerts.push(newAlert);
     return Promise.resolve({ rows: [newAlert], rowCount: 1 });
   }
@@ -439,8 +474,12 @@ describe('TruthShield Phase 4 E2E Integration Suite', () => {
 
   const orgId = 'org-uuid-1';
   const userId = 'user-uuid-1';
-  const userToken = jwt.sign({ userId, orgId, role: 'analyst' }, env.JWT_SECRET, { expiresIn: '15m' });
-  const adminToken = jwt.sign({ userId, orgId, role: 'admin' }, env.JWT_SECRET, { expiresIn: '15m' });
+  const userToken = jwt.sign({ userId, orgId, role: 'analyst' }, env.JWT_SECRET, {
+    expiresIn: '15m',
+  });
+  const adminToken = jwt.sign({ userId, orgId, role: 'admin' }, env.JWT_SECRET, {
+    expiresIn: '15m',
+  });
 
   beforeEach(() => {
     mockOrgs = [{ id: orgId, name: 'Test Org', plan_tier: 'enterprise', is_active: true }];
@@ -454,19 +493,41 @@ describe('TruthShield Phase 4 E2E Integration Suite', () => {
     readReplicaOnline = true;
     dbLatencyMs = 0;
 
-    Object.defineProperty(writePool, 'totalCount', { value: 10, writable: true, configurable: true });
+    Object.defineProperty(writePool, 'totalCount', {
+      value: 10,
+      writable: true,
+      configurable: true,
+    });
     Object.defineProperty(writePool, 'idleCount', { value: 5, writable: true, configurable: true });
-    Object.defineProperty(writePool, 'waitingCount', { value: 0, writable: true, configurable: true });
+    Object.defineProperty(writePool, 'waitingCount', {
+      value: 0,
+      writable: true,
+      configurable: true,
+    });
 
-    Object.defineProperty(readPool, 'totalCount', { value: 10, writable: true, configurable: true });
+    Object.defineProperty(readPool, 'totalCount', {
+      value: 10,
+      writable: true,
+      configurable: true,
+    });
     Object.defineProperty(readPool, 'idleCount', { value: 8, writable: true, configurable: true });
-    Object.defineProperty(readPool, 'waitingCount', { value: 0, writable: true, configurable: true });
+    Object.defineProperty(readPool, 'waitingCount', {
+      value: 0,
+      writable: true,
+      configurable: true,
+    });
 
-    writePoolQuerySpy = jest.spyOn(writePool, 'query').mockImplementation(((text: any, params?: any[]) => {
+    writePoolQuerySpy = jest.spyOn(writePool, 'query').mockImplementation(((
+      text: any,
+      params?: any[],
+    ) => {
       return (global as any).mockDbQuery(text, params);
     }) as any);
 
-    readPoolQuerySpy = jest.spyOn(readPool, 'query').mockImplementation(((text: any, params?: any[]) => {
+    readPoolQuerySpy = jest.spyOn(readPool, 'query').mockImplementation(((
+      text: any,
+      params?: any[],
+    ) => {
       if (!readReplicaOnline) {
         throw new Error('Read replica connection timed out');
       }
@@ -500,7 +561,13 @@ describe('TruthShield Phase 4 E2E Integration Suite', () => {
     it('should load list from DB on miss, set cache, run fast on hit, and invalidate cleanly on new job creation', async () => {
       // Initialize an empty job list
       mockJobs = [
-        { id: 'job-1', org_id: orgId, content_type: 'url', detection_modules: ['deepfake'], status: 'completed' },
+        {
+          id: 'job-1',
+          org_id: orgId,
+          content_type: 'url',
+          detection_modules: ['deepfake'],
+          status: 'completed',
+        },
       ];
 
       // First GET /jobs -> CACHE MISS (Inject synchronous latency for deterministic T2 < T1)
@@ -584,10 +651,14 @@ describe('TruthShield Phase 4 E2E Integration Suite', () => {
       // 6. Test plan-based limits: Create a starter org
       const starterOrgRes = await query(
         `INSERT INTO organizations (name, plan_tier) VALUES ($1, $2)`,
-        ['Starter Org', 'starter']
+        ['Starter Org', 'starter'],
       );
       const starterOrg = starterOrgRes.rows[0];
-      const starterToken = jwt.sign({ userId, orgId: starterOrg.id, role: 'analyst' }, env.JWT_SECRET, { expiresIn: '15m' });
+      const starterToken = jwt.sign(
+        { userId, orgId: starterOrg.id, role: 'analyst' },
+        env.JWT_SECRET,
+        { expiresIn: '15m' },
+      );
 
       // Trigger 20 successful job creations (since job limit is 20 in test mode)
       for (let i = 0; i < 20; i++) {
@@ -626,14 +697,14 @@ describe('TruthShield Phase 4 E2E Integration Suite', () => {
       // 1. Create job
       const jobRes = await query(
         `INSERT INTO detection_jobs (org_id, user_id, content_type, detection_modules) VALUES ($1, $2, $3, $4)`,
-        [orgId, userId, 'video', ['deepfake']]
+        [orgId, userId, 'video', ['deepfake']],
       );
       const job = jobRes.rows[0];
 
       // 2. Manually insert result with score 55 (triggers review automatically in our trigger)
       const resQuery = await query(
         `INSERT INTO detection_results (job_id, module, score, verdict, org_id) VALUES ($1, $2, $3, $4, $5)`,
-        [job.id, 'deepfake', 55.00, 'suspicious', orgId]
+        [job.id, 'deepfake', 55.0, 'suspicious', orgId],
       );
       const result = resQuery.rows[0];
 
@@ -684,7 +755,7 @@ describe('TruthShield Phase 4 E2E Integration Suite', () => {
       expect(submitRes.body.status).toBe('completed');
 
       // 8. Expect result.verdict updated
-      const updatedResult = mockResults.find(r => r.id === result.id);
+      const updatedResult = mockResults.find((r) => r.id === result.id);
       expect(updatedResult?.verdict).toBe('manipulated');
 
       // 9. Expect new alert created
@@ -732,16 +803,16 @@ describe('TruthShield Phase 4 E2E Integration Suite', () => {
       expect(count).toBe(1);
 
       // 4. Expect review status = 'auto_resolved'
-      const review = mockReviews.find(r => r.id === reviewId);
+      const review = mockReviews.find((r) => r.id === reviewId);
       expect(review?.status).toBe('auto_resolved');
       expect(review?.reviewer_verdict).toBe('suspicious');
 
       // 5. Expect 'auto_resolved_sla_breach' in result flags
-      const res = mockResults.find(r => r.id === resultId);
+      const res = mockResults.find((r) => r.id === resultId);
       expect(res?.flags).toContain('auto_resolved_sla_breach');
 
       // 6. Expect SLA breach alert created
-      expect(mockAlerts.some(a => a.title.includes('SLA Breach'))).toBe(true);
+      expect(mockAlerts.some((a) => a.title.includes('SLA Breach'))).toBe(true);
     });
   });
 
@@ -752,9 +823,7 @@ describe('TruthShield Phase 4 E2E Integration Suite', () => {
     it('should output counter/gauge stats in metrics, inject request IDs, prevent credential leaks, and handle stack trace sanitization', async () => {
       // 1. Make 10 requests to warm up metrics
       for (let i = 0; i < 10; i++) {
-        await request(app)
-          .get('/api/v1/jobs')
-          .set('Authorization', `Bearer ${userToken}`);
+        await request(app).get('/api/v1/jobs').set('Authorization', `Bearer ${userToken}`);
       }
 
       // 2. GET /metrics with header
@@ -769,7 +838,11 @@ describe('TruthShield Phase 4 E2E Integration Suite', () => {
       expect(metricRes.text).toContain('detection_queue_depth');
 
       // Set up active namespace context simulation for logs check
-      const payload = { message: 'Audit access log test', username: 'analyst', password: 'supersecretpassword' };
+      const payload = {
+        message: 'Audit access log test',
+        username: 'analyst',
+        password: 'supersecretpassword',
+      };
       logger.info(payload);
 
       // Verify sanitizeForLog directly since logger.write mock bypasses formats
@@ -804,8 +877,9 @@ describe('TruthShield Phase 4 E2E Integration Suite', () => {
 
       // 2-3. Call getJobsByOrg -> verify only 1 DB list query made (excluding count)
       await JobModel.getJobsByOrg(orgId, { page: 1, limit: 10 });
-      const jobListCalls = [...writePoolQuerySpy.mock.calls, ...readPoolQuerySpy.mock.calls]
-        .filter((call: any) => !call[0].toLowerCase().includes('count'));
+      const jobListCalls = [...writePoolQuerySpy.mock.calls, ...readPoolQuerySpy.mock.calls].filter(
+        (call: any) => !call[0].toLowerCase().includes('count'),
+      );
       expect(jobListCalls.length).toBe(1);
 
       writePoolQuerySpy.mockClear();
@@ -813,13 +887,15 @@ describe('TruthShield Phase 4 E2E Integration Suite', () => {
 
       // 4-5. Call getAlerts -> verify only 1 DB list query made (excluding count)
       await AlertService.getAlerts(orgId, { page: 1, limit: 10 });
-      const alertListCalls = [...writePoolQuerySpy.mock.calls, ...readPoolQuerySpy.mock.calls]
-        .filter((call: any) => !call[0].toLowerCase().includes('count'));
+      const alertListCalls = [
+        ...writePoolQuerySpy.mock.calls,
+        ...readPoolQuerySpy.mock.calls,
+      ].filter((call: any) => !call[0].toLowerCase().includes('count'));
       expect(alertListCalls.length).toBe(1);
 
       // 6-8. Simulate slow query logging
       const poolModule = await import('../../src/shared/database/pool.js');
-      
+
       // Override slow query threshold temporarily
       (env as any).SLOW_QUERY_THRESHOLD_MS = 10;
       dbLatencyMs = 20; // larger than threshold

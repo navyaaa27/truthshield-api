@@ -40,7 +40,7 @@ export function getRequiredScopeForRoute(path: string, method: string): string |
 export async function authenticateApiKey(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<any> {
   try {
     const authHeader = req.headers.authorization;
@@ -118,7 +118,7 @@ export async function authenticateApiKey(
 export async function authenticateJWTOrApiKey(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<any> {
   const authHeader = req.headers.authorization;
   if (!authHeader) {

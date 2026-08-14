@@ -11,7 +11,11 @@ const router = Router();
  * Custom Rate Limiter Middleware for Export
  * 10 exports per hour per org.
  */
-const exportRateLimiter = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+const exportRateLimiter = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     const orgId = (req as any).user.orgId;
     const key = `rl:export:${orgId}:1h`;
@@ -47,7 +51,7 @@ router.get(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -76,7 +80,7 @@ router.get(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -99,7 +103,7 @@ router.get(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -122,7 +126,7 @@ router.get(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -154,7 +158,7 @@ router.get(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 export default router;

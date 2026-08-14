@@ -18,7 +18,9 @@ export async function validateUrlSafety(url: string): Promise<void> {
 
   // 1. Reject non-HTTPS protocols
   if (parsedUrl.protocol !== 'https:') {
-    throw new ValidationError('Invalid protocol: only secure HTTPS is allowed for external scraping');
+    throw new ValidationError(
+      'Invalid protocol: only secure HTTPS is allowed for external scraping',
+    );
   }
 
   const hostname = parsedUrl.hostname.toLowerCase();
@@ -65,7 +67,9 @@ export async function validateUrlSafety(url: string): Promise<void> {
         ip.startsWith('10.') ||
         ip.startsWith('192.168.')
       ) {
-        throw new ValidationError(`DNS resolution points to forbidden private or loopback address: ${ip}`);
+        throw new ValidationError(
+          `DNS resolution points to forbidden private or loopback address: ${ip}`,
+        );
       }
 
       if (ip.startsWith('172.')) {
@@ -73,7 +77,9 @@ export async function validateUrlSafety(url: string): Promise<void> {
         if (parts.length >= 2) {
           const secondOctet = parseInt(parts[1], 10);
           if (!isNaN(secondOctet) && secondOctet >= 16 && secondOctet <= 31) {
-            throw new ValidationError(`DNS resolution points to forbidden private Class B address: ${ip}`);
+            throw new ValidationError(
+              `DNS resolution points to forbidden private Class B address: ${ip}`,
+            );
           }
         }
       }

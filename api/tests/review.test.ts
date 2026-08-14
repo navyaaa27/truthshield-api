@@ -56,8 +56,18 @@ function resetMockState() {
   ];
   mockUsers = [
     { id: 'user-admin', email: 'admin@starter.com', role: 'admin', organization_id: 'org-uuid-1' },
-    { id: 'user-analyst', email: 'analyst@starter.com', role: 'analyst', organization_id: 'org-uuid-1' },
-    { id: 'user-regular', email: 'regular@starter.com', role: 'user', organization_id: 'org-uuid-1' },
+    {
+      id: 'user-analyst',
+      email: 'analyst@starter.com',
+      role: 'analyst',
+      organization_id: 'org-uuid-1',
+    },
+    {
+      id: 'user-regular',
+      email: 'regular@starter.com',
+      role: 'user',
+      organization_id: 'org-uuid-1',
+    },
   ];
   mockAlerts = [];
   mockAuditLogs = [];
@@ -83,7 +93,10 @@ jest.mock('../src/shared/database/pool.js', () => {
       const p = params || [];
 
       // SELECT plan_tier FROM organizations
-      if (sql.startsWith('select plan_tier from organizations') || sql.startsWith('select * from organizations')) {
+      if (
+        sql.startsWith('select plan_tier from organizations') ||
+        sql.startsWith('select * from organizations')
+      ) {
         const id = p[0];
         const org = mockOrganizations.find((o) => o.id === id);
         return Promise.resolve({ rows: org ? [org] : [], rowCount: org ? 1 : 0 });
@@ -97,9 +110,14 @@ jest.mock('../src/shared/database/pool.js', () => {
       }
 
       // SELECT COUNT(*)::int as count FROM human_reviews WHERE assigned_to
-      if (sql.includes('count(*)::int as count from human_reviews') && sql.includes('assigned_to = $1')) {
+      if (
+        sql.includes('count(*)::int as count from human_reviews') &&
+        sql.includes('assigned_to = $1')
+      ) {
         const analystId = p[0];
-        const count = mockReviews.filter((r) => r.assigned_to === analystId && ['assigned', 'in_review'].includes(r.status)).length;
+        const count = mockReviews.filter(
+          (r) => r.assigned_to === analystId && ['assigned', 'in_review'].includes(r.status),
+        ).length;
         return Promise.resolve({ rows: [{ count }], rowCount: 1 });
       }
 
@@ -115,8 +133,18 @@ jest.mock('../src/shared/database/pool.js', () => {
         const id = p[0];
         const review = mockReviews.find((r) => r.id === id);
         if (review) {
-          const job = mockJobs.find((j) => j.id === review.job_id) || { id: review.job_id, content_type: 'image', status: 'completed', org_id: review.org_id };
-          const result = mockResults.find((res) => res.id === review.result_id) || { id: review.result_id, module: 'deepfake', score: review.ai_score, verdict: review.ai_verdict };
+          const job = mockJobs.find((j) => j.id === review.job_id) || {
+            id: review.job_id,
+            content_type: 'image',
+            status: 'completed',
+            org_id: review.org_id,
+          };
+          const result = mockResults.find((res) => res.id === review.result_id) || {
+            id: review.result_id,
+            module: 'deepfake',
+            score: review.ai_score,
+            verdict: review.ai_verdict,
+          };
           return Promise.resolve({
             rows: [{ ...review, job, result }],
             rowCount: 1,
@@ -127,7 +155,9 @@ jest.mock('../src/shared/database/pool.js', () => {
 
       // SELECT * FROM human_reviews WHERE status = 'pending' ...
       if (
-        (sql.includes('from human_reviews') && !sql.includes('count') && !sql.includes('avg_hours')) ||
+        (sql.includes('from human_reviews') &&
+          !sql.includes('count') &&
+          !sql.includes('avg_hours')) ||
         sql.includes('from human_reviews hr')
       ) {
         let rows = [...mockReviews];
@@ -135,7 +165,11 @@ jest.mock('../src/shared/database/pool.js', () => {
           rows = rows.filter((r) => r.org_id === p[0]);
         }
         if (sql.includes('sla_deadline < now()')) {
-          rows = rows.filter((r) => r.sla_deadline < new Date() && !['completed', 'auto_resolved', 'escalated'].includes(r.status));
+          rows = rows.filter(
+            (r) =>
+              r.sla_deadline < new Date() &&
+              !['completed', 'auto_resolved', 'escalated'].includes(r.status),
+          );
         }
         if (sql.includes('assigned_to = $1')) {
           rows = rows.filter((r) => r.assigned_to === p[0]);
@@ -266,7 +300,7 @@ jest.mock('../src/shared/database/pool.js', () => {
         const resultId = p[1];
         const jobId = p[2];
         const alertsToResolve = mockAlerts.filter(
-          (a) => (a.result_id === resultId || a.job_id === jobId) && !a.resolved_at
+          (a) => (a.result_id === resultId || a.job_id === jobId) && !a.resolved_at,
         );
         alertsToResolve.forEach((a) => {
           a.resolved_by = resolvedBy;
@@ -284,11 +318,18 @@ jest.mock('../src/shared/database/pool.js', () => {
       // COUNT reviews stats query
       if (sql.startsWith('select count(*)::int')) {
         let count = 0;
-        if (sql.includes("status = 'pending'")) count = mockReviews.filter((r) => r.status === 'pending').length;
-        else if (sql.includes("status = 'assigned'")) count = mockReviews.filter((r) => r.status === 'assigned').length;
-        else if (sql.includes("status = 'in_review'")) count = mockReviews.filter((r) => r.status === 'in_review').length;
+        if (sql.includes("status = 'pending'"))
+          count = mockReviews.filter((r) => r.status === 'pending').length;
+        else if (sql.includes("status = 'assigned'"))
+          count = mockReviews.filter((r) => r.status === 'assigned').length;
+        else if (sql.includes("status = 'in_review'"))
+          count = mockReviews.filter((r) => r.status === 'in_review').length;
         else if (sql.includes('sla_deadline < now()')) {
-          count = mockReviews.filter((r) => r.sla_deadline < new Date() && !['completed', 'auto_resolved', 'escalated'].includes(r.status)).length;
+          count = mockReviews.filter(
+            (r) =>
+              r.sla_deadline < new Date() &&
+              !['completed', 'auto_resolved', 'escalated'].includes(r.status),
+          ).length;
         }
         return Promise.resolve({ rows: [{ count }], rowCount: 1 });
       }
@@ -305,7 +346,9 @@ jest.mock('../src/shared/database/pool.js', () => {
         const rows = mockUsers
           .filter((u) => ['analyst', 'admin'].includes(u.role))
           .map((u) => {
-            const activeCount = mockReviews.filter((r) => r.assigned_to === u.id && ['assigned', 'in_review'].includes(r.status)).length;
+            const activeCount = mockReviews.filter(
+              (r) => r.assigned_to === u.id && ['assigned', 'in_review'].includes(r.status),
+            ).length;
             return {
               reviewer_id: u.id,
               reviewer_email: u.email,
@@ -325,7 +368,9 @@ jest.mock('../src/shared/redis/index.js', () => {
   return {
     checkRedisHealth: jest.fn().mockImplementation(() => Promise.resolve(true)),
     redis: {
-      get: jest.fn().mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
+      get: jest
+        .fn()
+        .mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
       set: jest.fn().mockImplementation(((key: any, value: any) => {
         mockRedisStore[key] = value;
         return Promise.resolve('OK');
@@ -340,7 +385,9 @@ jest.mock('../src/shared/redis/index.js', () => {
 
 jest.mock('../src/shared/redis/redis.client.js', () => ({
   redisClient: {
-    get: jest.fn().mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
+    get: jest
+      .fn()
+      .mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
     setex: jest.fn().mockImplementation(((key: any, _ttl: any, val: any) => {
       mockRedisStore[key] = val;
       return Promise.resolve('OK');
@@ -358,10 +405,14 @@ jest.mock('../src/shared/redis/redis.client.js', () => ({
         return Promise.resolve('fake_sha_hash');
       }
       if (cmd === 'evalsha' || cmd === 'eval') {
-        const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+        const key =
+          args.find(
+            (arg) =>
+              typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:')),
+          ) || 'unknown_key';
         const val = parseInt(mockRedisStore[key] || '0', 10) + 1;
         mockRedisStore[key] = val.toString();
-        return Promise.resolve([val, 60]); 
+        return Promise.resolve([val, 60]);
       }
       return Promise.resolve();
     }) as any),
@@ -372,9 +423,11 @@ jest.mock('../src/shared/redis/redis.client.js', () => ({
 
 jest.mock('../src/shared/redis/cache.service.js', () => ({
   cacheService: {
-    getOrSet: jest.fn().mockImplementation(((_key: any, _ttl: any, fetchFn: any) => fetchFn()) as any),
+    getOrSet: jest
+      .fn()
+      .mockImplementation(((_key: any, _ttl: any, fetchFn: any) => fetchFn()) as any),
     invalidateOrgCache: jest.fn().mockImplementation(() => Promise.resolve()),
-  }
+  },
 }));
 
 // Load Service and App
@@ -430,7 +483,10 @@ describe('Human Review Queue & Operations Suite', () => {
 
     it('should determine priority based on org plan tier (enterprise -> urgent)', async () => {
       const enterpriseJob = { id: 'job-ent', org_id: 'org-uuid-3' } as any;
-      const review = await ReviewService.createReviewTask({ id: 'res-2', score: 20, verdict: 'clean' } as any, enterpriseJob);
+      const review = await ReviewService.createReviewTask(
+        { id: 'res-2', score: 20, verdict: 'clean' } as any,
+        enterpriseJob,
+      );
       expect(review.priority).toBe('urgent');
     });
 
@@ -456,7 +512,7 @@ describe('Human Review Queue & Operations Suite', () => {
 
       const review = await ReviewService.createReviewTask(mockResult, mockJob);
       await expect(ReviewService.assignReview(review.id, 'user-analyst')).rejects.toThrow(
-        'Analyst has reached the maximum workload limit'
+        'Analyst has reached the maximum workload limit',
       );
     });
 
@@ -466,10 +522,22 @@ describe('Human Review Queue & Operations Suite', () => {
       await ReviewService.startReview(review.id, 'user-analyst');
 
       // Setup detection results in mock state
-      const targetResult = { id: 'res-1', job_id: 'job-1', module: 'deepfake', score: 65, verdict: 'suspicious', flags: [] };
+      const targetResult = {
+        id: 'res-1',
+        job_id: 'job-1',
+        module: 'deepfake',
+        score: 65,
+        verdict: 'suspicious',
+        flags: [],
+      };
       mockResults.push(targetResult);
 
-      const jobRecord = { id: 'job-1', org_id: 'org-uuid-1', aggregated_score: 65, aggregated_verdict: 'suspicious' };
+      const jobRecord = {
+        id: 'job-1',
+        org_id: 'org-uuid-1',
+        aggregated_score: 65,
+        aggregated_verdict: 'suspicious',
+      };
       mockJobs.push(jobRecord);
 
       const completed = await ReviewService.submitReview(review.id, 'user-analyst', {
@@ -521,7 +589,13 @@ describe('Human Review Queue & Operations Suite', () => {
 
     it('GET /reviews should return lists for admin or analyst', async () => {
       const analystToken = signMockToken('user-analyst', 'analyst', 'org-uuid-1');
-      mockReviews.push({ id: 'r1', org_id: 'org-uuid-1', status: 'pending', priority: 'high', sla_deadline: new Date() });
+      mockReviews.push({
+        id: 'r1',
+        org_id: 'org-uuid-1',
+        status: 'pending',
+        priority: 'high',
+        sla_deadline: new Date(),
+      });
 
       const res = await request(app)
         .get('/api/v1/reviews')
@@ -554,7 +628,13 @@ describe('Human Review Queue & Operations Suite', () => {
 
     it('POST /reviews/:id/assign should allow analysts self-assignment', async () => {
       const analystToken = signMockToken('user-analyst', 'analyst', 'org-uuid-1');
-      const review = { id: 'rev-assign-1', org_id: 'org-uuid-1', status: 'pending', job_id: 'j1', result_id: 'res1' };
+      const review = {
+        id: 'rev-assign-1',
+        org_id: 'org-uuid-1',
+        status: 'pending',
+        job_id: 'j1',
+        result_id: 'res1',
+      };
       mockReviews.push(review);
 
       const res = await request(app)
@@ -569,7 +649,13 @@ describe('Human Review Queue & Operations Suite', () => {
 
     it('POST /reviews/:id/assign should reject analysts assigning to others', async () => {
       const analystToken = signMockToken('user-analyst', 'analyst', 'org-uuid-1');
-      const review = { id: 'rev-assign-2', org_id: 'org-uuid-1', status: 'pending', job_id: 'j1', result_id: 'res1' };
+      const review = {
+        id: 'rev-assign-2',
+        org_id: 'org-uuid-1',
+        status: 'pending',
+        job_id: 'j1',
+        result_id: 'res1',
+      };
       mockReviews.push(review);
 
       await request(app)

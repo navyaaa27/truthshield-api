@@ -1,12 +1,12 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { env } from '../../../config/env.js';
-import { 
-  ExtractedClaim, 
-  FactCheckResult, 
-  GoogleFactCheck, 
-  ClaudeVerdict, 
-  SourceCorroboration 
+import {
+  ExtractedClaim,
+  FactCheckResult,
+  GoogleFactCheck,
+  ClaudeVerdict,
+  SourceCorroboration,
 } from './fakenews.types.js';
 import { logger } from '../../../utils/logger.js';
 import { recordExternalApi } from '../../../shared/metrics/metrics.service.js';
@@ -15,12 +15,32 @@ export class FactChecker {
   private readonly CREDIBLE_RSS_FEEDS = [
     'https://feeds.reuters.com/reuters/topNews',
     'https://rss.apnews.com/apnews/topnews',
-    'https://feeds.bbci.co.uk/news/rss.xml'
+    'https://feeds.bbci.co.uk/news/rss.xml',
   ];
 
   private readonly STOP_WORDS = new Set([
-    'the', 'a', 'an', 'is', 'of', 'and', 'to', 'in', 'on', 'at', 'for', 'with',
-    'by', 'that', 'this', 'it', 'was', 'were', 'be', 'are', 'about', 'from'
+    'the',
+    'a',
+    'an',
+    'is',
+    'of',
+    'and',
+    'to',
+    'in',
+    'on',
+    'at',
+    'for',
+    'with',
+    'by',
+    'that',
+    'this',
+    'it',
+    'was',
+    'were',
+    'be',
+    'are',
+    'about',
+    'from',
   ]);
 
   /**
@@ -36,9 +56,7 @@ export class FactChecker {
     }
 
     for (const chunk of chunks) {
-      const chunkResults = await Promise.all(
-        chunk.map(c => this.checkSingleClaim(c))
-      );
+      const chunkResults = await Promise.all(chunk.map((c) => this.checkSingleClaim(c)));
       results.push(...chunkResults);
     }
 
@@ -50,24 +68,22 @@ export class FactChecker {
    */
   private async checkSingleClaim(claim: ExtractedClaim): Promise<FactCheckResult> {
     // Implement standard 200ms rate-limit throttling before triggering lookups
-    await new Promise(resolve => setTimeout(resolve, 200));
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     const [googleChecks, claudeVerdict, corroboration] = await Promise.all([
       this.checkGoogleFactCheck(claim.text),
       this.checkWithClaude(claim),
-      this.checkSourceCorroboration(claim.text)
+      this.checkSourceCorroboration(claim.text),
     ]);
 
     // Heuristics veracity scoring (Base value starts at 50)
     let finalVeracity = 50;
 
     // 1. Evaluate Google Fact Check ratings
-    const hasFalseCheck = googleChecks.some(c => 
-      /false|incorrect|untrue|fake|misleading/i.test(c.rating)
+    const hasFalseCheck = googleChecks.some((c) =>
+      /false|incorrect|untrue|fake|misleading/i.test(c.rating),
     );
-    const hasTrueCheck = googleChecks.some(c => 
-      /true|correct|accurate/i.test(c.rating)
-    );
+    const hasTrueCheck = googleChecks.some((c) => /true|correct|accurate/i.test(c.rating));
 
     if (hasFalseCheck) {
       finalVeracity -= 40;
@@ -98,7 +114,7 @@ export class FactChecker {
       googleFactChecks: googleChecks,
       claudeVerdict,
       sourceCorroboration: corroboration,
-      finalVeracity
+      finalVeracity,
     };
   }
 
@@ -118,10 +134,10 @@ export class FactChecker {
         axios.get(url, {
           params: {
             query,
-            key: env.GOOGLE_FACT_CHECK_API_KEY
+            key: env.GOOGLE_FACT_CHECK_API_KEY,
           },
-          timeout: 5000
-        })
+          timeout: 5000,
+        }),
       );
 
       const checks: GoogleFactCheck[] = [];
@@ -133,7 +149,7 @@ export class FactChecker {
                 claimText: claimRecord.text || query,
                 publisher: review.publisher ? review.publisher.name : 'Unknown',
                 rating: review.textRating || 'Unknown',
-                url: review.url || ''
+                url: review.url || '',
               });
             }
           }
@@ -154,7 +170,7 @@ export class FactChecker {
       return {
         verdict: 'uncertain',
         confidence: 0.5,
-        reasoning: 'Anthropic API key is missing. Unable to assess veracity via Claude.'
+        reasoning: 'Anthropic API key is missing. Unable to assess veracity via Claude.',
       };
     }
 
@@ -186,36 +202,40 @@ Return a valid JSON object matching this schema:
             messages: [
               {
                 role: 'user',
-                content: userPrompt
-              }
-            ]
+                content: userPrompt,
+              },
+            ],
           },
           {
             headers: {
               'x-api-key': env.ANTHROPIC_API_KEY,
               'anthropic-version': '2023-06-01',
-              'content-type': 'application/json'
-            }
-          }
-        )
+              'content-type': 'application/json',
+            },
+          },
+        ),
       );
 
       const content = response.data.content[0].text;
-      const cleanedJson = content.trim().replace(/^```json/, '').replace(/```$/, '').trim();
+      const cleanedJson = content
+        .trim()
+        .replace(/^```json/, '')
+        .replace(/```$/, '')
+        .trim();
       const parsed = JSON.parse(cleanedJson);
 
       return {
         verdict: parsed.verdict || 'uncertain',
         confidence: parsed.confidence ?? 0.5,
         reasoning: parsed.reasoning || 'No details provided.',
-        caveats: parsed.caveats
+        caveats: parsed.caveats,
       };
     } catch (err: any) {
       logger.warn(`Claude veracity assessment failed: ${err.message}`);
       return {
         verdict: 'uncertain',
         confidence: 0.5,
-        reasoning: `Claude veracity assessment failed: ${err.message}`
+        reasoning: `Claude veracity assessment failed: ${err.message}`,
       };
     }
   }
@@ -231,15 +251,15 @@ Return a valid JSON object matching this schema:
       return {
         sourcesChecked: this.CREDIBLE_RSS_FEEDS,
         corroboratingCount: 0,
-        sources: []
+        sources: [],
       };
     }
 
     try {
-      const feedPromises = this.CREDIBLE_RSS_FEEDS.map(async feedUrl => {
+      const feedPromises = this.CREDIBLE_RSS_FEEDS.map(async (feedUrl) => {
         try {
           const res = await recordExternalApi('RSSFeed', feedUrl, () =>
-            axios.get(feedUrl, { timeout: 3000 })
+            axios.get(feedUrl, { timeout: 3000 }),
           );
           const $ = cheerio.load(res.data, { xmlMode: true });
 
@@ -249,14 +269,14 @@ Return a valid JSON object matching this schema:
 
             if (headline) {
               const headlineKeywords = this.getKeywords(headline);
-              const overlap = claimKeywords.filter(w => headlineKeywords.includes(w));
+              const overlap = claimKeywords.filter((w) => headlineKeywords.includes(w));
 
               if (overlap.length >= 2) {
                 const matchConfidence = overlap.length / claimKeywords.length;
                 corroboratedSources.push({
                   title: headline,
                   link,
-                  matchConfidence: Math.min(1.0, matchConfidence)
+                  matchConfidence: Math.min(1.0, matchConfidence),
                 });
               }
             }
@@ -276,14 +296,14 @@ Return a valid JSON object matching this schema:
       return {
         sourcesChecked: this.CREDIBLE_RSS_FEEDS,
         corroboratingCount: sortedSources.length,
-        sources: sortedSources
+        sources: sortedSources,
       };
     } catch (err: any) {
       logger.warn(`Source corroboration failed: ${err.message}`);
       return {
         sourcesChecked: this.CREDIBLE_RSS_FEEDS,
         corroboratingCount: 0,
-        sources: []
+        sources: [],
       };
     }
   }
@@ -296,6 +316,6 @@ Return a valid JSON object matching this schema:
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, '')
       .split(/\s+/)
-      .filter(w => w.length > 2 && !this.STOP_WORDS.has(w));
+      .filter((w) => w.length > 2 && !this.STOP_WORDS.has(w));
   }
 }

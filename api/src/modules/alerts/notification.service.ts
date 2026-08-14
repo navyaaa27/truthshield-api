@@ -14,21 +14,15 @@ export class NotificationService {
   static async sendAlertNotifications(alert: Alert, org: any): Promise<void> {
     const metadata = org.source_metadata || {};
     const channels = metadata.notifications?.channels || ['email', 'slack'];
-    
+
     const tasks: Promise<string>[] = [];
 
     if (channels.includes('email')) {
-      tasks.push(
-        this.sendEmailNotification(alert, org)
-          .then(() => 'email')
-      );
+      tasks.push(this.sendEmailNotification(alert, org).then(() => 'email'));
     }
 
     if (channels.includes('slack')) {
-      tasks.push(
-        this.sendSlackNotification(alert, org)
-          .then(() => 'slack')
-      );
+      tasks.push(this.sendSlackNotification(alert, org).then(() => 'slack'));
     }
 
     if (tasks.length === 0) {
@@ -43,7 +37,9 @@ export class NotificationService {
       if (res.status === 'fulfilled') {
         successfulChannels.push(res.value);
       } else {
-        logger.error(`Notification channel failed to dispatch: ${res.reason?.message || res.reason}`);
+        logger.error(
+          `Notification channel failed to dispatch: ${res.reason?.message || res.reason}`,
+        );
       }
     });
 
@@ -62,9 +58,11 @@ export class NotificationService {
            notification_channels = $1, 
            updated_at = NOW() 
        WHERE id = $2`,
-      [channels, alertId]
+      [channels, alertId],
     );
-    logger.info(`Updated notification state for Alert ${alertId} (Channels: ${channels.join(', ')})`);
+    logger.info(
+      `Updated notification state for Alert ${alertId} (Channels: ${channels.join(', ')})`,
+    );
   }
 
   /**
@@ -72,14 +70,18 @@ export class NotificationService {
    */
   private static async sendEmailNotification(alert: Alert, org: any): Promise<void> {
     const metadata = org.source_metadata || {};
-    const recipient = metadata.notifications?.emailRecipient || org.contactEmail || org.email || 'alerts@truthshield.ai';
+    const recipient =
+      metadata.notifications?.emailRecipient ||
+      org.contactEmail ||
+      org.email ||
+      'alerts@truthshield.ai';
 
     try {
       await resend.emails.send({
         from: env.SMTP_FROM || 'alerts@yourdomain.com',
         to: recipient,
         subject: `[TruthShield] ${alert.severity.toUpperCase()} Alert: ${alert.title}`,
-        html: buildAlertEmailHtml(alert)
+        html: buildAlertEmailHtml(alert),
       });
       logger.info(`Email alert notification successfully dispatched via Resend to: ${recipient}`);
     } catch (error) {
@@ -99,7 +101,7 @@ export class NotificationService {
     }
 
     const webhook = new IncomingWebhook(webhookUrl);
-    
+
     let emoji = '⚠️';
     if (alert.severity === 'critical') emoji = '🚨';
     if (alert.severity === 'high') emoji = '🔴';

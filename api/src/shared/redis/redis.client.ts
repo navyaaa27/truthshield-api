@@ -12,7 +12,7 @@ const redisClient = new Redis(env.REDIS_URL, {
   retryStrategy(times: number): number | null {
     if (times > 10) {
       logger.error(
-        `[RedisClient] Exceeded maximum retry attempts (10). Redis connection unavailable — cache will gracefully miss.`
+        `[RedisClient] Exceeded maximum retry attempts (10). Redis connection unavailable — cache will gracefully miss.`,
       );
       return null; // Stop retrying — do NOT crash
     }

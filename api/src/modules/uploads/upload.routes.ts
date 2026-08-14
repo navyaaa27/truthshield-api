@@ -41,14 +41,18 @@ router.post(
       // Enforce billing and subscription limits
       const checkLimit = await UsageService.checkUsageLimit(orgId, 'uploads');
       if (!checkLimit.allowed) {
-        throw new AppError('Upload limit exceeded. Please upgrade your plan.', 403, 'LIMIT_EXCEEDED');
+        throw new AppError(
+          'Upload limit exceeded. Please upgrade your plan.',
+          403,
+          'LIMIT_EXCEEDED',
+        );
       }
 
       // Enforce multi-tenant access check: verify jobId belongs to orgId!
-      const jobRes = await query(
-        `SELECT * FROM detection_jobs WHERE id = $1 AND org_id = $2`,
-        [jobId, orgId]
-      );
+      const jobRes = await query(`SELECT * FROM detection_jobs WHERE id = $1 AND org_id = $2`, [
+        jobId,
+        orgId,
+      ]);
       if (jobRes.rowCount === 0) {
         throw new ForbiddenError('Access to job outside organization context is denied');
       }
@@ -66,7 +70,7 @@ router.post(
       await query(
         `INSERT INTO audit_logs (org_id, user_id, action, resource_type, resource_id)
          VALUES ($1, $2, $3, $4, $5)`,
-        [orgId, userId, 'ASSET_UPLOAD_INITIATED', 'detection_jobs', jobId]
+        [orgId, userId, 'ASSET_UPLOAD_INITIATED', 'detection_jobs', jobId],
       );
 
       // Increment uploads usage
@@ -76,7 +80,7 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 /**
@@ -105,7 +109,9 @@ router.post(
       // Verify file presence on AWS S3
       const check = await S3Service.confirmUpload(s3Key);
       if (!check.exists) {
-        res.status(200).json({ confirmed: false, message: 'Asset is not verified on storage client' });
+        res
+          .status(200)
+          .json({ confirmed: false, message: 'Asset is not verified on storage client' });
         return;
       }
 
@@ -121,7 +127,7 @@ router.post(
          SET s3_key = $1, source_metadata = source_metadata || $2::jsonb, updated_at = NOW() 
          WHERE id = $3 AND org_id = $4
          RETURNING id`,
-        [s3Key, metadataPatch, jobId, orgId]
+        [s3Key, metadataPatch, jobId, orgId],
       );
 
       if (updateRes.rowCount === 0) {
@@ -132,7 +138,7 @@ router.post(
       await query(
         `INSERT INTO audit_logs (org_id, user_id, action, resource_type, resource_id)
          VALUES ($1, $2, $3, $4, $5)`,
-        [orgId, userId, 'ASSET_UPLOAD_COMPLETED', 'detection_jobs', jobId]
+        [orgId, userId, 'ASSET_UPLOAD_COMPLETED', 'detection_jobs', jobId],
       );
 
       res.status(200).json({
@@ -143,7 +149,7 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 /**
@@ -176,7 +182,7 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 export default router;

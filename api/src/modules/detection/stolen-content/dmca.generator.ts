@@ -15,11 +15,14 @@ export class DMCAGenerator {
     orgContact: string;
     matchSimilarity: number;
   }): Promise<DMCADraft | null> {
-    const { infringingUrl, originalAssetDescription, orgName, orgContact, matchSimilarity } = params;
+    const { infringingUrl, originalAssetDescription, orgName, orgContact, matchSimilarity } =
+      params;
 
     // Strict compliance check: only draft notices when similarity is greater than 85%
     if (matchSimilarity <= 85) {
-      logger.info(`Similarity score (${matchSimilarity}%) is too low to trigger automatic DMCA drafting.`);
+      logger.info(
+        `Similarity score (${matchSimilarity}%) is too low to trigger automatic DMCA drafting.`,
+      );
       return null;
     }
 
@@ -106,18 +109,23 @@ Return JSON:
             'content-type': 'application/json',
           },
           timeout: 5000,
-        }
+        },
       );
 
       const content = response.data.content[0].text;
-      const cleanedJson = content.trim().replace(/^```json/, '').replace(/```$/, '').trim();
+      const cleanedJson = content
+        .trim()
+        .replace(/^```json/, '')
+        .replace(/```$/, '')
+        .trim();
       const parsed = JSON.parse(cleanedJson);
 
       let body = parsed.body || defaultBody;
-      
+
       // Ensure the mandatory disclaimer is appended at all costs
       if (!body.includes('DISCLAIMER:')) {
-        body += '\n\nDISCLAIMER: This is an AI-generated draft. Review by qualified legal counsel is strongly recommended before sending.';
+        body +=
+          '\n\nDISCLAIMER: This is an AI-generated draft. Review by qualified legal counsel is strongly recommended before sending.';
       }
 
       return {
@@ -129,7 +137,9 @@ Return JSON:
         generatedAt,
       };
     } catch (err: any) {
-      logger.warn(`Claude DMCA notice drafting failed: ${err.message}. Emitting boilerplate template instead.`);
+      logger.warn(
+        `Claude DMCA notice drafting failed: ${err.message}. Emitting boilerplate template instead.`,
+      );
       return {
         recipientType,
         subject: defaultSubject,

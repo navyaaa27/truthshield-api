@@ -7,7 +7,7 @@ import { Request } from 'express';
 
 const skipTrustedIps = (req: Request) => {
   if (!env.RATE_LIMIT_SKIP_TRUSTED_IPS) return false;
-  const trusted = env.RATE_LIMIT_SKIP_TRUSTED_IPS.split(',').map(i => i.trim());
+  const trusted = env.RATE_LIMIT_SKIP_TRUSTED_IPS.split(',').map((i) => i.trim());
   return trusted.includes(req.ip || '');
 };
 
@@ -20,7 +20,9 @@ const skipRateLimiting = (req: Request) => {
 
 const createRedisStore = (prefix: string) => {
   if (process.env.MOCK_INFRA === 'true' || redisClient.status !== 'ready') {
-    logger.warn(`[RateLimit] Redis is offline or MOCK_INFRA is enabled. Falling back to local in-memory store for prefix: ${prefix}`);
+    logger.warn(
+      `[RateLimit] Redis is offline or MOCK_INFRA is enabled. Falling back to local in-memory store for prefix: ${prefix}`,
+    );
     return undefined;
   }
   return new RedisStore({
@@ -55,9 +57,9 @@ export const globalLimiter = rateLimit({
       error: {
         code: 'RATE_LIMITED',
         message: 'Too many requests. Please try again later.',
-      }
+      },
     });
-  }
+  },
 });
 
 export const authLimiter = rateLimit({
@@ -75,9 +77,9 @@ export const authLimiter = rateLimit({
         code: 'RATE_LIMITED',
         message: 'Too many attempts. Try again in 15 minutes.',
         retryAfter: 15 * 60,
-      }
+      },
     });
-  }
+  },
 });
 
 export const registrationLimiter = rateLimit({
@@ -94,33 +96,36 @@ export const registrationLimiter = rateLimit({
       error: {
         code: 'RATE_LIMITED',
         message: 'Too many registrations from this IP. Try again in 1 hour.',
-      }
+      },
     });
-  }
+  },
 });
 
 // Used internally by planLimiter.ts
-export const createDynamicPlanLimiter = (prefix: string, windowMs: number) => rateLimit({
-  windowMs,
-  max: (req: Request) => (req as any).planLimit || 10,
-  keyGenerator: (req: Request) => (req as any).user?.orgId || req.ip || 'unknown',
-  store: createRedisStore(prefix),
-  skip: skipRateLimiting,
-  validate: { default: false },
-  handler: (req, res) => {
-    logger.warn(`[RateLimit] Plan limit (${prefix}) exceeded for org: ${(req as any).user?.orgId}`);
-    res.status(429).json({
-      success: false,
-      error: {
-        code: 'PLAN_LIMIT_EXCEEDED',
-        message: 'Upgrade your plan for higher limits',
-        currentPlan: (req as any).currentPlan || 'starter',
-        limit: (req as any).planLimit,
-        upgradeUrl: '/billing/upgrade'
-      }
-    });
-  }
-});
+export const createDynamicPlanLimiter = (prefix: string, windowMs: number) =>
+  rateLimit({
+    windowMs,
+    max: (req: Request) => (req as any).planLimit || 10,
+    keyGenerator: (req: Request) => (req as any).user?.orgId || req.ip || 'unknown',
+    store: createRedisStore(prefix),
+    skip: skipRateLimiting,
+    validate: { default: false },
+    handler: (req, res) => {
+      logger.warn(
+        `[RateLimit] Plan limit (${prefix}) exceeded for org: ${(req as any).user?.orgId}`,
+      );
+      res.status(429).json({
+        success: false,
+        error: {
+          code: 'PLAN_LIMIT_EXCEEDED',
+          message: 'Upgrade your plan for higher limits',
+          currentPlan: (req as any).currentPlan || 'starter',
+          limit: (req as any).planLimit,
+          upgradeUrl: '/billing/upgrade',
+        },
+      });
+    },
+  });
 
 export const uploadLimiter = createDynamicPlanLimiter('uploads', 60 * 60 * 1000);
 export const detectionJobLimiter = createDynamicPlanLimiter('jobs', 60 * 60 * 1000);

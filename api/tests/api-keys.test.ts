@@ -44,10 +44,14 @@ jest.mock('../src/shared/redis/redis.client.js', () => ({
         return Promise.resolve('fake_sha_hash');
       }
       if (cmd === 'evalsha' || cmd === 'eval') {
-        const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+        const key =
+          args.find(
+            (arg) =>
+              typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:')),
+          ) || 'unknown_key';
         const val = parseInt(mockRedisStore[key] || '0', 10) + 1;
         mockRedisStore[key] = val.toString();
-        return Promise.resolve([val, 60]); 
+        return Promise.resolve([val, 60]);
       }
       return Promise.resolve();
     }) as any),
@@ -65,7 +69,7 @@ jest.mock('../src/shared/database/pool.js', () => ({
       Promise.resolve({
         query: jest.fn().mockImplementation(() => Promise.resolve({ rows: [], rowCount: 0 })),
         release: jest.fn(),
-      })
+      }),
     ),
     end: jest.fn().mockImplementation(() => Promise.resolve()),
   },
@@ -97,14 +101,16 @@ jest.mock('../src/shared/database/pool.js', () => ({
     // SELECT k.*, o.name as org_name
     if (sql.includes('select k.*, o.name as org_name')) {
       const hash = p[0];
-      const match = mockApiKeys.find(k => k.key_hash === hash);
+      const match = mockApiKeys.find((k) => k.key_hash === hash);
       if (match) {
         return Promise.resolve({
-          rows: [{
-            ...match,
-            org_name: 'Test Org',
-            org_plan_tier: 'enterprise',
-          }],
+          rows: [
+            {
+              ...match,
+              org_name: 'Test Org',
+              org_plan_tier: 'enterprise',
+            },
+          ],
           rowCount: 1,
         });
       }
@@ -114,7 +120,7 @@ jest.mock('../src/shared/database/pool.js', () => ({
     // SELECT key_hash, org_id FROM api_keys WHERE id = $1
     if (sql.includes('select key_hash, org_id from api_keys')) {
       const keyId = p[0];
-      const match = mockApiKeys.find(k => k.id === keyId);
+      const match = mockApiKeys.find((k) => k.id === keyId);
       if (match) {
         return Promise.resolve({ rows: [match], rowCount: 1 });
       }
@@ -125,7 +131,7 @@ jest.mock('../src/shared/database/pool.js', () => ({
     if (sql.includes('select name, scopes, allowed_ips, rate_limit_override, expires_at')) {
       const keyId = p[0];
       const orgId = p[1];
-      const match = mockApiKeys.find(k => k.id === keyId && k.org_id === orgId);
+      const match = mockApiKeys.find((k) => k.id === keyId && k.org_id === orgId);
       if (match) {
         return Promise.resolve({ rows: [match], rowCount: 1 });
       }
@@ -136,7 +142,7 @@ jest.mock('../src/shared/database/pool.js', () => ({
     if (sql.includes('update api_keys') && sql.includes('is_active = false')) {
       const revokedBy = p[0];
       const keyId = p[1];
-      const match = mockApiKeys.find(k => k.id === keyId);
+      const match = mockApiKeys.find((k) => k.id === keyId);
       if (match) {
         match.is_active = false;
         match.revoked_at = new Date().toISOString();
@@ -149,7 +155,7 @@ jest.mock('../src/shared/database/pool.js', () => ({
     if (sql.includes('update api_keys') && sql.includes('last_used_at')) {
       const ip = p[0];
       const keyId = p[1];
-      const match = mockApiKeys.find(k => k.id === keyId);
+      const match = mockApiKeys.find((k) => k.id === keyId);
       if (match) {
         match.last_used_at = new Date().toISOString();
         match.last_used_ip = ip;
@@ -161,10 +167,12 @@ jest.mock('../src/shared/database/pool.js', () => ({
     // SELECT id, name, key_prefix, scopes... FROM api_keys
     if (sql.includes('select id, name, key_prefix')) {
       const orgId = p[0];
-      const matches = mockApiKeys.filter(k => k.org_id === orgId).map(k => {
-        const { key_hash, ...rest } = k;
-        return rest;
-      });
+      const matches = mockApiKeys
+        .filter((k) => k.org_id === orgId)
+        .map((k) => {
+          const { key_hash, ...rest } = k;
+          return rest;
+        });
       return Promise.resolve({ rows: matches, rowCount: matches.length });
     }
 
@@ -195,7 +203,7 @@ jest.mock('../src/shared/database/pool.js', () => ({
     if (sql.includes('update detection_jobs set source_metadata = $1')) {
       const metadata = p[0];
       const jobId = p[1];
-      const match = mockJobs.find(j => j.id === jobId);
+      const match = mockJobs.find((j) => j.id === jobId);
       if (match) {
         match.source_metadata = typeof metadata === 'string' ? JSON.parse(metadata) : metadata;
       }
@@ -206,7 +214,7 @@ jest.mock('../src/shared/database/pool.js', () => ({
     if (sql.includes('update detection_jobs set s3_key = $1')) {
       const s3Key = p[0];
       const jobId = p[1];
-      const match = mockJobs.find(j => j.id === jobId);
+      const match = mockJobs.find((j) => j.id === jobId);
       if (match) {
         match.s3_key = s3Key;
       }
@@ -217,7 +225,7 @@ jest.mock('../src/shared/database/pool.js', () => ({
     if (sql.includes('select * from detection_jobs')) {
       const jobId = p[0];
       const orgId = p[1];
-      const match = mockJobs.find(j => j.id === jobId && j.org_id === orgId);
+      const match = mockJobs.find((j) => j.id === jobId && j.org_id === orgId);
       return Promise.resolve({ rows: match ? [match] : [], rowCount: match ? 1 : 0 });
     }
 
@@ -242,7 +250,7 @@ jest.mock('../src/shared/database/pool.js', () => ({
     // SELECT id, org_id, uploaded_by, asset_name... FROM brand_assets
     if (sql.includes('select id, org_id, uploaded_by')) {
       const orgId = p[0];
-      const matches = mockBrandAssets.filter(a => a.org_id === orgId && a.is_active);
+      const matches = mockBrandAssets.filter((a) => a.org_id === orgId && a.is_active);
       return Promise.resolve({ rows: matches, rowCount: matches.length });
     }
 
@@ -333,20 +341,24 @@ describe('API Key Management & Client Authentication Suite', () => {
   });
 
   it('should reject creation with invalid scopes or malformed allowed IPs', async () => {
-    await expect(ApiKeyService.createApiKey({
-      orgId: 'org-uuid-1',
-      createdBy: 'user-uuid-1',
-      name: 'Invalid Scopes Key',
-      scopes: ['jobs:create', 'malicious:scope'],
-    })).rejects.toThrow('Invalid API key scope: malicious:scope');
+    await expect(
+      ApiKeyService.createApiKey({
+        orgId: 'org-uuid-1',
+        createdBy: 'user-uuid-1',
+        name: 'Invalid Scopes Key',
+        scopes: ['jobs:create', 'malicious:scope'],
+      }),
+    ).rejects.toThrow('Invalid API key scope: malicious:scope');
 
-    await expect(ApiKeyService.createApiKey({
-      orgId: 'org-uuid-1',
-      createdBy: 'user-uuid-1',
-      name: 'Invalid IPs Key',
-      scopes: ['jobs:create'],
-      allowedIps: ['999.999.999.999'],
-    })).rejects.toThrow('Invalid allowed IP or CIDR range: 999.999.999.999');
+    await expect(
+      ApiKeyService.createApiKey({
+        orgId: 'org-uuid-1',
+        createdBy: 'user-uuid-1',
+        name: 'Invalid IPs Key',
+        scopes: ['jobs:create'],
+        allowedIps: ['999.999.999.999'],
+      }),
+    ).rejects.toThrow('Invalid allowed IP or CIDR range: 999.999.999.999');
   });
 
   it('should validate active keys and reject expired, revoked, or non-matching IP keys', async () => {

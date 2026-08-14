@@ -11,7 +11,10 @@ jest.mock('@aws-sdk/client-s3', () => {
       return {
         send: jest.fn().mockImplementation((command: any) => {
           const key = command.input?.Key;
-          if (command.constructor.name === 'HeadObjectCommand' || command.name === 'HeadObjectCommand') {
+          if (
+            command.constructor.name === 'HeadObjectCommand' ||
+            command.name === 'HeadObjectCommand'
+          ) {
             if (key === 'non-existent-key' || key?.includes('non-existent')) {
               const err = new Error('NotFound');
               err.name = 'NotFound';
@@ -26,11 +29,21 @@ jest.mock('@aws-sdk/client-s3', () => {
         }),
       };
     }),
-    PutObjectCommand: jest.fn().mockImplementation((input) => ({ constructor: { name: 'PutObjectCommand' }, input })),
-    GetObjectCommand: jest.fn().mockImplementation((input) => ({ constructor: { name: 'GetObjectCommand' }, input })),
-    HeadObjectCommand: jest.fn().mockImplementation((input) => ({ constructor: { name: 'HeadObjectCommand' }, input })),
-    DeleteObjectCommand: jest.fn().mockImplementation((input) => ({ constructor: { name: 'DeleteObjectCommand' }, input })),
-    CopyObjectCommand: jest.fn().mockImplementation((input) => ({ constructor: { name: 'CopyObjectCommand' }, input })),
+    PutObjectCommand: jest
+      .fn()
+      .mockImplementation((input) => ({ constructor: { name: 'PutObjectCommand' }, input })),
+    GetObjectCommand: jest
+      .fn()
+      .mockImplementation((input) => ({ constructor: { name: 'GetObjectCommand' }, input })),
+    HeadObjectCommand: jest
+      .fn()
+      .mockImplementation((input) => ({ constructor: { name: 'HeadObjectCommand' }, input })),
+    DeleteObjectCommand: jest
+      .fn()
+      .mockImplementation((input) => ({ constructor: { name: 'DeleteObjectCommand' }, input })),
+    CopyObjectCommand: jest
+      .fn()
+      .mockImplementation((input) => ({ constructor: { name: 'CopyObjectCommand' }, input })),
   };
 });
 
@@ -137,7 +150,7 @@ jest.mock('../src/shared/redis/redis.client.js', () => ({
         return Promise.resolve('fake_sha_hash');
       }
       if (cmd === 'evalsha' || cmd === 'eval') {
-        return Promise.resolve([1, 60]); 
+        return Promise.resolve([1, 60]);
       }
       return Promise.resolve();
     }) as any),
@@ -156,11 +169,9 @@ describe('AWS S3 File Storage & Presigning Service Tests', () => {
   const userId = 'user-uuid-123';
 
   // Issue a valid JWT access token for authentication
-  const accessToken = jwt.sign(
-    { userId, orgId, role: 'admin' },
-    env.JWT_SECRET,
-    { expiresIn: '15m' }
-  );
+  const accessToken = jwt.sign({ userId, orgId, role: 'admin' }, env.JWT_SECRET, {
+    expiresIn: '15m',
+  });
 
   beforeEach(() => {
     mockJobs = [
@@ -203,7 +214,7 @@ describe('AWS S3 File Storage & Presigning Service Tests', () => {
           fileName: 'malicious.exe',
           mimeType: 'application/x-msdownload',
           fileSizeBytes: 2048,
-        })
+        }),
       ).rejects.toThrow('Unsupported file type');
     });
 
@@ -216,7 +227,7 @@ describe('AWS S3 File Storage & Presigning Service Tests', () => {
           fileName: 'huge_image.png',
           mimeType: 'image/png',
           fileSizeBytes: 51 * 1024 * 1024,
-        })
+        }),
       ).rejects.toThrow('File size exceeds the allowed limit');
 
       // 501MB video should fail (limit is 500MB)
@@ -227,7 +238,7 @@ describe('AWS S3 File Storage & Presigning Service Tests', () => {
           fileName: 'huge_video.mp4',
           mimeType: 'video/mp4',
           fileSizeBytes: 501 * 1024 * 1024,
-        })
+        }),
       ).rejects.toThrow('File size exceeds the allowed limit');
     });
 
@@ -288,7 +299,7 @@ describe('AWS S3 File Storage & Presigning Service Tests', () => {
       expect(res.status).toBe(200);
       expect(res.body.uploadUrl).toBe('https://s3.amazonaws.com/mock-signed-url');
       expect(res.body.s3Key).toContain(`${orgId}/jobs/${jobId}/`);
-      
+
       // Confirm audit log was saved
       expect(mockAuditLogs.length).toBeGreaterThanOrEqual(1);
       const log = mockAuditLogs[0];
@@ -301,7 +312,7 @@ describe('AWS S3 File Storage & Presigning Service Tests', () => {
 
     it('POST /api/v1/uploads/confirm should confirm existing S3 asset and update detection_jobs columns', async () => {
       const validS3Key = `${orgId}/jobs/${jobId}/123456789-avatar.webp`;
-      
+
       const res = await request(app)
         .post('/api/v1/uploads/confirm')
         .set('Authorization', `Bearer ${accessToken}`)

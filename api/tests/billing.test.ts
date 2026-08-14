@@ -12,9 +12,7 @@ let mockBillingEvents: any[] = [];
 let mockOrganizations: any[] = [
   { id: 'org-uuid-1', name: 'Test Org 1', plan_tier: 'starter', is_active: true },
 ];
-const mockUsers: any[] = [
-  { id: 'user-uuid-1', email: 'user1@test.com', org_id: 'org-uuid-1' }
-];
+const mockUsers: any[] = [{ id: 'user-uuid-1', email: 'user1@test.com', org_id: 'org-uuid-1' }];
 
 let mockRedisStore: Record<string, string> = {};
 let isRedisAvailable = true;
@@ -65,7 +63,9 @@ jest.mock('../src/shared/database/pool.js', () => ({
     // SELECT FROM subscriptions
     if (sql.includes('select') && sql.includes('subscriptions')) {
       const lookupVal = p[0];
-      const match = mockSubscriptions.find((s) => s.org_id === lookupVal || s.stripe_customer_id === lookupVal);
+      const match = mockSubscriptions.find(
+        (s) => s.org_id === lookupVal || s.stripe_customer_id === lookupVal,
+      );
       return Promise.resolve({ rows: match ? [match] : [], rowCount: match ? 1 : 0 });
     }
 
@@ -94,7 +94,7 @@ jest.mock('../src/shared/database/pool.js', () => ({
     if (sql.includes('select count(*)') && sql.includes('billing_events')) {
       const orgId = p[0];
       const failures = mockBillingEvents.filter(
-        (e) => e.org_id === orgId && e.event_type === 'invoice.payment_failed'
+        (e) => e.org_id === orgId && e.event_type === 'invoice.payment_failed',
       );
       return Promise.resolve({ rows: [{ count: failures.length.toString() }], rowCount: 1 });
     }
@@ -165,9 +165,9 @@ jest.mock('../src/shared/database/pool.js', () => ({
     if (sql.includes('update organizations')) {
       const isStarterHardcoded = sql.includes("plan_tier = 'starter'");
       const isSuspend = sql.includes('is_active = false');
-      
+
       const planTier = isStarterHardcoded ? 'starter' : p[0];
-      const orgId = isSuspend ? p[0] : (isStarterHardcoded ? p[0] : p[1]);
+      const orgId = isSuspend ? p[0] : isStarterHardcoded ? p[0] : p[1];
 
       const match = mockOrganizations.find((o) => o.id === orgId);
       if (match) {
@@ -187,7 +187,9 @@ jest.mock('../src/shared/database/pool.js', () => ({
       const periodEnd = p[2];
       const jobsLimit = p[3];
 
-      let match = mockUsageRecords.find((u) => u.org_id === orgId && u.period_start === periodStart);
+      let match = mockUsageRecords.find(
+        (u) => u.org_id === orgId && u.period_start === periodStart,
+      );
       if (!match) {
         match = {
           id: crypto.randomUUID(),
@@ -263,9 +265,9 @@ jest.mock('../src/shared/database/pool.js', () => ({
 }));
 
 // Mock Stripe API SDK
-const mockStripeCustomersCreate = jest.fn().mockImplementation(() =>
-  Promise.resolve({ id: 'cus_stripe_success' })
-);
+const mockStripeCustomersCreate = jest
+  .fn()
+  .mockImplementation(() => Promise.resolve({ id: 'cus_stripe_success' }));
 const mockStripeSubscriptionsCreate = jest.fn().mockImplementation(() =>
   Promise.resolve({
     id: 'sub_stripe_success',
@@ -276,14 +278,14 @@ const mockStripeSubscriptionsCreate = jest.fn().mockImplementation(() =>
     latest_invoice: {
       payment_intent: { client_secret: 'seti_stripe_secret' },
     },
-  })
+  }),
 );
-const mockStripeSubscriptionsUpdate = jest.fn().mockImplementation(() =>
-  Promise.resolve({ id: 'sub_stripe_success' })
-);
-const mockStripeSubscriptionsCancel = jest.fn().mockImplementation(() =>
-  Promise.resolve({ id: 'sub_stripe_success' })
-);
+const mockStripeSubscriptionsUpdate = jest
+  .fn()
+  .mockImplementation(() => Promise.resolve({ id: 'sub_stripe_success' }));
+const mockStripeSubscriptionsCancel = jest
+  .fn()
+  .mockImplementation(() => Promise.resolve({ id: 'sub_stripe_success' }));
 const mockStripeSubscriptionsRetrieve = jest.fn().mockImplementation(() =>
   Promise.resolve({
     id: 'sub_stripe_success',
@@ -292,7 +294,7 @@ const mockStripeSubscriptionsRetrieve = jest.fn().mockImplementation(() =>
     items: {
       data: [{ id: 'item_success', price: { id: 'price_growth_fake' } }],
     },
-  })
+  }),
 );
 
 jest.mock('stripe', () => {
@@ -452,7 +454,7 @@ describe('Billing & Subscription Management Suite', () => {
     });
 
     await processWebhookEvent(fakeEvent as any);
-    
+
     mockBillingEvents.push({
       stripe_event_id: 'evt_stripe_1',
       event_type: 'customer.subscription.updated',
@@ -461,7 +463,9 @@ describe('Billing & Subscription Management Suite', () => {
 
     // Process again with same ID - should duplicate check
     const query = require('../src/shared/database/pool.js').query;
-    const exists = await query(`SELECT processed FROM billing_events WHERE stripe_event_id = $1`, ['evt_stripe_1']);
+    const exists = await query(`SELECT processed FROM billing_events WHERE stripe_event_id = $1`, [
+      'evt_stripe_1',
+    ]);
     expect(exists.rowCount).toBe(1);
     expect(exists.rows[0].processed).toBe(true);
   });
@@ -484,19 +488,29 @@ describe('Billing & Subscription Management Suite', () => {
 
     // 1st failure
     await processWebhookEvent(fakeFailedEvent as any);
-    mockBillingEvents.push({ org_id: 'org-uuid-1', event_type: 'invoice.payment_failed', processed: true });
+    mockBillingEvents.push({
+      org_id: 'org-uuid-1',
+      event_type: 'invoice.payment_failed',
+      processed: true,
+    });
     expect(mockOrganizations[0].is_active).toBe(true); // not suspended yet
 
     // 2nd failure
     await processWebhookEvent(fakeFailedEvent as any);
-    mockBillingEvents.push({ org_id: 'org-uuid-1', event_type: 'invoice.payment_failed', processed: true });
+    mockBillingEvents.push({
+      org_id: 'org-uuid-1',
+      event_type: 'invoice.payment_failed',
+      processed: true,
+    });
     expect(mockOrganizations[0].is_active).toBe(true); // not suspended yet
 
     // 3rd failure
     await processWebhookEvent(fakeFailedEvent as any);
     expect(mockOrganizations[0].is_active).toBe(false); // SUSPENDED!
     expect(mockSendMail).toHaveBeenCalled();
-    expect((mockSendMail.mock.calls[mockSendMail.mock.calls.length - 1][0] as any).subject).toContain('Suspended');
+    expect(
+      (mockSendMail.mock.calls[mockSendMail.mock.calls.length - 1][0] as any).subject,
+    ).toContain('Suspended');
   });
 
   // 8. Canceled Subscription downgrades to Starter

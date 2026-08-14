@@ -36,10 +36,12 @@ export function isIpInCidr(ip: string, cidr: string): boolean {
   }
 
   if (ipType === 4) {
-    const ipNum = cleanIp.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
-    const cidrNum = cleanCidrIp.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
+    const ipNum =
+      cleanIp.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
+    const cidrNum =
+      cleanCidrIp.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
     const shift = 32 - mask;
-    const maskNum = (shift === 32 ? 0 : (~0 << shift)) >>> 0;
+    const maskNum = (shift === 32 ? 0 : ~0 << shift) >>> 0;
     return (ipNum & maskNum) === (cidrNum & maskNum);
   } else {
     try {
@@ -53,7 +55,10 @@ export function isIpInCidr(ip: string, cidr: string): boolean {
           const middle = Array(missing).fill('0000');
           full = [...left, ...middle, ...right].join(':');
         }
-        return full.split(':').map(part => part.padStart(4, '0')).join('');
+        return full
+          .split(':')
+          .map((part) => part.padStart(4, '0'))
+          .join('');
       };
 
       const ipHex = expandIPv6(cleanIp);
@@ -85,10 +90,10 @@ export function isIpInCidr(ip: string, cidr: string): boolean {
 export function isValidCIDR(cidr: string): boolean {
   const parts = cidr.split('/');
   if (parts.length > 2) return false;
-  
+
   const ip = parts[0];
   if (isIP(ip) === 0) return false;
-  
+
   if (parts.length === 2) {
     const mask = parseInt(parts[1], 10);
     if (isNaN(mask)) return false;
@@ -115,7 +120,15 @@ export class ApiKeyService {
     expiresAt?: Date;
     rateLimitOverride?: number;
   }): Promise<{ apiKey: ApiKey; plainKey: string }> {
-    const { orgId, createdBy, name, scopes, allowedIps = [], expiresAt, rateLimitOverride } = params;
+    const {
+      orgId,
+      createdBy,
+      name,
+      scopes,
+      allowedIps = [],
+      expiresAt,
+      rateLimitOverride,
+    } = params;
 
     // 1. Scope validation
     const allowedScopes = Object.values(SCOPES) as string[];
@@ -162,7 +175,7 @@ export class ApiKeyService {
         allowedIps.length > 0 ? allowedIps : null,
         rateLimitOverride || null,
         expiresAt || null,
-      ]
+      ],
     );
 
     const keyRecord = insertRes.rows[0];
@@ -171,7 +184,7 @@ export class ApiKeyService {
     await query(
       `INSERT INTO audit_logs (org_id, user_id, action, resource_type, resource_id)
        VALUES ($1, $2, 'API_KEY_CREATED', 'api_keys', $3)`,
-      [orgId, createdBy, keyRecord.id]
+      [orgId, createdBy, keyRecord.id],
     );
 
     logger.info(`[ApiKeyService] API Key '${name}' generated successfully under Org ${orgId}`);
@@ -187,7 +200,7 @@ export class ApiKeyService {
    */
   static async validateApiKey(
     plainKey: string,
-    remoteIp?: string
+    remoteIp?: string,
   ): Promise<{
     valid: boolean;
     apiKey?: ApiKey;
@@ -220,7 +233,7 @@ export class ApiKeyService {
            FROM api_keys k
            JOIN organizations o ON k.org_id = o.id
            WHERE k.key_hash = $1`,
-          [hash]
+          [hash],
         );
 
         if (dbRes.rowCount === 0) {
@@ -277,7 +290,10 @@ export class ApiKeyService {
         }
         const ipMatch = record.allowed_ips.some((cidr: string) => isIpInCidr(remoteIp, cidr));
         if (!ipMatch) {
-          return { valid: false, reason: `IP address ${remoteIp} is not authorized by allowed_ips allowlist` };
+          return {
+            valid: false,
+            reason: `IP address ${remoteIp} is not authorized by allowed_ips allowlist`,
+          };
         }
       }
 
@@ -288,7 +304,7 @@ export class ApiKeyService {
              last_used_ip = $1,
              total_requests = total_requests + 1
          WHERE id = $2`,
-        [remoteIp || null, record.id]
+        [remoteIp || null, record.id],
       ).catch((err) => {
         logger.error(`[ApiKeyService] Failed to update key usage statistics: ${err.message}`);
       });
@@ -314,7 +330,7 @@ export class ApiKeyService {
        FROM api_keys
        WHERE org_id = $1
        ORDER BY created_at DESC`,
-      [orgId]
+      [orgId],
     );
 
     return res.rows;
@@ -341,7 +357,7 @@ export class ApiKeyService {
            revoked_at = NOW(),
            revoked_by = $1
        WHERE id = $2`,
-      [revokedBy, keyId]
+      [revokedBy, keyId],
     );
 
     // Evict Redis cache immediately
@@ -352,7 +368,7 @@ export class ApiKeyService {
     await query(
       `INSERT INTO audit_logs (org_id, user_id, action, resource_type, resource_id)
        VALUES ($1, $2, 'API_KEY_REVOKED', 'api_keys', $3)`,
-      [orgId, revokedBy, keyId]
+      [orgId, revokedBy, keyId],
     );
 
     logger.warn(`[ApiKeyService] API Key ${keyId} revoked by user ${revokedBy}`);
@@ -364,13 +380,13 @@ export class ApiKeyService {
   static async rotateApiKey(
     keyId: string,
     orgId: string,
-    userId: string
+    userId: string,
   ): Promise<{ apiKey: ApiKey; plainKey: string }> {
     const checkRes = await query(
       `SELECT name, scopes, allowed_ips, rate_limit_override, expires_at 
        FROM api_keys 
        WHERE id = $1 AND org_id = $2`,
-      [keyId, orgId]
+      [keyId, orgId],
     );
 
     if (checkRes.rowCount === 0) {
@@ -397,10 +413,12 @@ export class ApiKeyService {
     await query(
       `INSERT INTO audit_logs (org_id, user_id, action, resource_type, resource_id)
        VALUES ($1, $2, 'API_KEY_ROTATED', 'api_keys', $3)`,
-      [orgId, userId, newKeyResult.apiKey.id]
+      [orgId, userId, newKeyResult.apiKey.id],
     );
 
-    logger.info(`[ApiKeyService] API Key rotated successfully (Old: ${keyId}, New: ${newKeyResult.apiKey.id})`);
+    logger.info(
+      `[ApiKeyService] API Key rotated successfully (Old: ${keyId}, New: ${newKeyResult.apiKey.id})`,
+    );
 
     return newKeyResult;
   }

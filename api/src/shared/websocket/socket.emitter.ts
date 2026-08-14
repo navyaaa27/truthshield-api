@@ -91,7 +91,7 @@ export class SocketEmitter {
     try {
       const res = await query(
         'SELECT COUNT(*)::int as count FROM alerts WHERE org_id = $1 AND acknowledged_at IS NULL',
-        [orgId]
+        [orgId],
       );
       const count = res.rows[0]?.count || 0;
       if (socket) {

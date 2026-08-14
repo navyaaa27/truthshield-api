@@ -1,9 +1,6 @@
 import axios from 'axios';
 import { env } from '../../../config/env.js';
-import { 
-  FakeNewsResult, 
-  DomainInfo
-} from './fakenews.types.js';
+import { FakeNewsResult, DomainInfo } from './fakenews.types.js';
 import { ArticleScraper } from './fakenews.scraper.js';
 import { ClaimExtractor } from './fakenews.extractor.js';
 import { FactChecker } from './fakenews.factchecker.js';
@@ -19,7 +16,7 @@ export class FakeNewsAnalyzer {
    */
   async analyze(
     input: { sourceUrl?: string; rawText?: string },
-    contentType: 'url' | 'article'
+    contentType: 'url' | 'article',
   ): Promise<FakeNewsResult> {
     let title = 'Raw Input Text Analysis';
     let textToAnalyze = input.rawText || '';
@@ -49,7 +46,7 @@ export class FakeNewsAnalyzer {
       url,
       title,
       author,
-      publishDate
+      publishDate,
     );
 
     // 3. Verify Claims
@@ -67,20 +64,23 @@ export class FakeNewsAnalyzer {
       let totalWeight = 0;
 
       for (const res of claimResults) {
-        const matchingClaim = extraction.claims.find(c => c.id === res.claimId);
-        const weight = (matchingClaim?.claimType === 'factual' || matchingClaim?.claimType === 'statistic') ? 2 : 1;
-        
+        const matchingClaim = extraction.claims.find((c) => c.id === res.claimId);
+        const weight =
+          matchingClaim?.claimType === 'factual' || matchingClaim?.claimType === 'statistic'
+            ? 2
+            : 1;
+
         totalWeightedVeracity += res.finalVeracity * weight;
         totalWeight += weight;
       }
 
-      const averageVeracity = totalWeight > 0 ? (totalWeightedVeracity / totalWeight) : 50;
-      
+      const averageVeracity = totalWeight > 0 ? totalWeightedVeracity / totalWeight : 50;
+
       // claimScore represents MISINFORMATION probability (100 = completely false, 0 = completely true)
       claimScore = 100 - averageVeracity;
 
       // Apply penalty for multiple false claims (Veracity < 35)
-      const falseClaimsFound = claimResults.filter(r => r.finalVeracity < 35).length;
+      const falseClaimsFound = claimResults.filter((r) => r.finalVeracity < 35).length;
       if (falseClaimsFound >= 3) {
         claimScore += 20;
       }
@@ -112,7 +112,7 @@ export class FakeNewsAnalyzer {
     }
 
     // Weighted final score calculation
-    let score = (claimScore * 0.6) + (domainScore * 0.4);
+    let score = claimScore * 0.6 + domainScore * 0.4;
     score = Math.max(0, Math.min(100, Math.round(score)));
 
     // 6. Map Verdict
@@ -129,11 +129,16 @@ export class FakeNewsAnalyzer {
     if (domainInfo.isKnownSatire) flags.push('KNOWN_SATIRE_OUTLET');
     if (domainInfo.isKnownMisinfo) flags.push('KNOWN_MISINFORMATION_OUTLET');
     if (!domainInfo.httpsEnabled) flags.push('INSECURE_CONNECTION');
-    const falseCount = claimResults.filter(r => r.finalVeracity < 35).length;
+    const falseCount = claimResults.filter((r) => r.finalVeracity < 35).length;
     if (falseCount >= 3) flags.push('MULTIPLE_FALSE_CLAIMS_DETECTED');
 
     // 7. Synthesize Overall Review Summary
-    const overallSummary = await this.generateOverallSummary(score, domainInfo, claimResults.length, falseCount);
+    const overallSummary = await this.generateOverallSummary(
+      score,
+      domainInfo,
+      claimResults.length,
+      falseCount,
+    );
 
     return {
       score,
@@ -146,8 +151,8 @@ export class FakeNewsAnalyzer {
         sourceCredibility: domainInfo.credibilityScore,
         domainInfo,
         claimResults,
-        overallSummary
-      }
+        overallSummary,
+      },
     };
   }
 
@@ -165,7 +170,7 @@ export class FakeNewsAnalyzer {
     score: number,
     domainInfo: DomainInfo,
     claimsCount: number,
-    falseCount: number
+    falseCount: number,
   ): Promise<string> {
     const defaultSummary = `This content received a misinformation score of ${score}/100. Analysis evaluated ${claimsCount} extracted claim(s), identifying ${falseCount} verified false statement(s) alongside a domain credibility index of ${domainInfo.credibilityScore}.`;
 
@@ -193,18 +198,18 @@ Verified False Claims Found: ${falseCount}
           messages: [
             {
               role: 'user',
-              content: userPrompt
-            }
-          ]
+              content: userPrompt,
+            },
+          ],
         },
         {
           headers: {
             'x-api-key': env.ANTHROPIC_API_KEY,
             'anthropic-version': '2023-06-01',
-            'content-type': 'application/json'
+            'content-type': 'application/json',
           },
-          timeout: 4000
-        }
+          timeout: 4000,
+        },
       );
 
       return response.data.content[0].text.trim() || defaultSummary;

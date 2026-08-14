@@ -31,7 +31,7 @@ router.get(
       const cacheKey = CacheKeys.alertsList(
         orgId,
         { severity: filters.severity, acknowledged: filters.acknowledged },
-        filters.page
+        filters.page,
       );
 
       const result = await cacheService.getOrSet(cacheKey, 30, async () => {
@@ -42,7 +42,7 @@ router.get(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -68,7 +68,7 @@ router.get(
              COUNT(CASE WHEN acknowledged_at IS NULL THEN 1 END)::int as unread
            FROM alerts
            WHERE org_id = $1`,
-          [orgId]
+          [orgId],
         );
 
         const row = statsRes.rows[0];
@@ -88,7 +88,7 @@ router.get(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -113,7 +113,7 @@ router.patch(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -139,7 +139,7 @@ router.patch(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 export default router;

@@ -37,7 +37,9 @@ export class ReportService {
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     if (diffDays > 365) {
-      throw new ValidationError('The specified audit report period cannot exceed a maximum duration of 365 days.');
+      throw new ValidationError(
+        'The specified audit report period cannot exceed a maximum duration of 365 days.',
+      );
     }
 
     // 2. Validate report type availability matching organization subscription plans
@@ -50,11 +52,15 @@ export class ReportService {
     const tier = (org.plan_tier || 'starter').toLowerCase();
 
     if (tier === 'starter' && reportType !== 'threat_summary') {
-      throw new ForbiddenError('Starter plan organizations are restricted to "threat_summary" report requests only.');
+      throw new ForbiddenError(
+        'Starter plan organizations are restricted to "threat_summary" report requests only.',
+      );
     }
 
     if (tier === 'growth' && reportType !== 'threat_summary' && reportType !== 'job_detail') {
-      throw new ForbiddenError('Growth tier organizations are restricted to "threat_summary" or "job_detail" report requests only.');
+      throw new ForbiddenError(
+        'Growth tier organizations are restricted to "threat_summary" or "job_detail" report requests only.',
+      );
     }
 
     // Insert enqueued report record with 'generating' status
@@ -70,7 +76,7 @@ export class ReportService {
       ) 
       VALUES ($1, $2, $3, 'generating', $4, $5, NOW()) 
       RETURNING *`,
-      [orgId, requestedBy, reportType, start, end]
+      [orgId, requestedBy, reportType, start, end],
     );
 
     const report: Report = dbRes.rows[0];
@@ -79,7 +85,7 @@ export class ReportService {
     await reportQueue.add(
       'generate-report',
       { reportId: report.id },
-      { jobId: report.id } // Avoid duplicate ticks
+      { jobId: report.id }, // Avoid duplicate ticks
     );
 
     logger.info(`Report enqueued successfully: ${report.id} (Type: ${reportType}, Org: ${orgId})`);
@@ -99,7 +105,9 @@ export class ReportService {
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     if (diffDays > 365) {
-      throw new ValidationError('The specified audit report period cannot exceed a maximum duration of 365 days.');
+      throw new ValidationError(
+        'The specified audit report period cannot exceed a maximum duration of 365 days.',
+      );
     }
 
     // 2. Validate report type availability matching organization subscription plans
@@ -112,11 +120,15 @@ export class ReportService {
     const tier = (org.plan_tier || 'starter').toLowerCase();
 
     if (tier === 'starter' && reportType !== 'threat_summary') {
-      throw new ForbiddenError('Starter plan organizations are restricted to "threat_summary" report requests only.');
+      throw new ForbiddenError(
+        'Starter plan organizations are restricted to "threat_summary" report requests only.',
+      );
     }
 
     if (tier === 'growth' && reportType !== 'threat_summary' && reportType !== 'job_detail') {
-      throw new ForbiddenError('Growth tier organizations are restricted to "threat_summary" or "job_detail" report requests only.');
+      throw new ForbiddenError(
+        'Growth tier organizations are restricted to "threat_summary" or "job_detail" report requests only.',
+      );
     }
 
     // Insert enqueued report record with 'generating' status
@@ -132,7 +144,7 @@ export class ReportService {
       ) 
       VALUES ($1, $2, $3, 'generating', $4, $5, NOW()) 
       RETURNING *`,
-      [orgId, requestedBy, reportType, start, end]
+      [orgId, requestedBy, reportType, start, end],
     );
 
     const report: Report = dbRes.rows[0];
@@ -141,10 +153,12 @@ export class ReportService {
     await reportQueue.add(
       'generate-report',
       { reportId: report.id },
-      { jobId: report.id } // Avoid duplicate ticks
+      { jobId: report.id }, // Avoid duplicate ticks
     );
 
-    logger.info(`JSON Report enqueued successfully: ${report.id} (Type: ${reportType}, Org: ${orgId})`);
+    logger.info(
+      `JSON Report enqueued successfully: ${report.id} (Type: ${reportType}, Org: ${orgId})`,
+    );
 
     return report;
   }
@@ -191,7 +205,7 @@ export class ReportService {
             Body: jsonBuffer,
             ContentType: 'application/json',
             ServerSideEncryption: 'AES256',
-          })
+          }),
         );
 
         // Generate pre-signed URL with 24-hour expiration threshold
@@ -218,7 +232,7 @@ export class ReportService {
             expiresAt,
             assembledData.jobs.length,
             reportId,
-          ]
+          ],
         );
 
         logger.info(`[ReportService] Successfully published report JSON: ${reportId}`);
@@ -231,7 +245,9 @@ export class ReportService {
         });
 
         // 6. Send finished confirmation email notification to user
-        const userRes = await query('SELECT email FROM users WHERE id = $1', [dbReport.requested_by]);
+        const userRes = await query('SELECT email FROM users WHERE id = $1', [
+          dbReport.requested_by,
+        ]);
         const user = userRes.rows[0];
 
         if (user) {
@@ -258,7 +274,7 @@ export class ReportService {
           Body: watermarkedPdf,
           ContentType: 'application/pdf',
           ServerSideEncryption: 'AES256',
-        })
+        }),
       );
 
       // Generate pre-signed URL with 24-hour expiration threshold
@@ -285,7 +301,7 @@ export class ReportService {
           expiresAt,
           assembledData.jobs.length,
           reportId,
-        ]
+        ],
       );
 
       logger.info(`[ReportService] Successfully published report PDF: ${reportId}`);
@@ -310,7 +326,7 @@ export class ReportService {
         `UPDATE reports 
          SET status = 'failed', error_message = $1 
          WHERE id = $2`,
-        [err.message, reportId]
+        [err.message, reportId],
       );
       throw err;
     }
@@ -335,7 +351,9 @@ export class ReportService {
     // Proactive check of expired keys (past 24h expiration deadline)
     const expiresAt = report.expiresAt || (report as any).expires_at;
     if (report.status === 'ready' && expiresAt && new Date(expiresAt) < new Date()) {
-      await query("UPDATE reports SET status = 'expired', download_url = NULL WHERE id = $1", [reportId]);
+      await query("UPDATE reports SET status = 'expired', download_url = NULL WHERE id = $1", [
+        reportId,
+      ]);
       report.status = 'expired';
       report.downloadUrl = undefined;
       (report as any).download_url = null;
@@ -350,7 +368,7 @@ export class ReportService {
   async listReports(
     orgId: string,
     page = 1,
-    limit = 20
+    limit = 20,
   ): Promise<{ reports: Report[]; total: number }> {
     const offset = (page - 1) * limit;
 
@@ -360,7 +378,7 @@ export class ReportService {
          WHERE org_id = $1 
          ORDER BY created_at DESC 
          LIMIT $2 OFFSET $3`,
-        [orgId, limit, offset]
+        [orgId, limit, offset],
       ),
       query('SELECT COUNT(*)::int as count FROM reports WHERE org_id = $1', [orgId]),
     ]);
@@ -394,7 +412,7 @@ export class ReportService {
           new DeleteObjectCommand({
             Bucket: bucket,
             Key: report.s3_key,
-          })
+          }),
         );
       } catch (err: any) {
         logger.warn(`S3 delete failed for Report Key ${report.s3_key}: ${err.message}`);
@@ -416,7 +434,12 @@ export class ReportService {
   /**
    * NodeMailer dispatcher helper.
    */
-  private async dispatchEmailNotification(recipient: string, downloadUrl: string, expiresAt: Date, isJson = false): Promise<void> {
+  private async dispatchEmailNotification(
+    recipient: string,
+    downloadUrl: string,
+    expiresAt: Date,
+    isJson = false,
+  ): Promise<void> {
     try {
       const { Resend } = await import('resend');
       const resend = new Resend(process.env.RESEND_API_KEY);

@@ -6,9 +6,9 @@ import request from 'supertest';
 //  1. Mock BullMQ queues / workers
 // ──────────────────────────────────────────────
 const mockQueueAdd = jest.fn();
-const mockGetJobCounts = jest.fn().mockImplementation(() =>
-  Promise.resolve({ waiting: 0, active: 0, delayed: 0 })
-);
+const mockGetJobCounts = jest
+  .fn()
+  .mockImplementation(() => Promise.resolve({ waiting: 0, active: 0, delayed: 0 }));
 
 jest.mock('bullmq', () => ({
   Queue: jest.fn().mockImplementation((name: any) => ({
@@ -87,7 +87,7 @@ jest.mock('../src/shared/database/pool.js', () => ({
       Promise.resolve({
         query: jest.fn().mockImplementation(() => Promise.resolve({ rows: [], rowCount: 0 })),
         release: jest.fn(),
-      })
+      }),
     ),
     end: jest.fn().mockImplementation(() => Promise.resolve()),
   },
@@ -124,7 +124,7 @@ describe('Production-Grade Observability Stack Tests', () => {
     jest.clearAllMocks();
     // Reset mock implementations after clearAllMocks
     (mockGetJobCounts as any).mockImplementation(() =>
-      Promise.resolve({ waiting: 0, active: 0, delayed: 0 })
+      Promise.resolve({ waiting: 0, active: 0, delayed: 0 }),
     );
     warnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => logger);
     infoSpy = jest.spyOn(logger, 'info').mockImplementation(() => logger);
@@ -325,7 +325,7 @@ describe('Production-Grade Observability Stack Tests', () => {
       await queueMonitor.pollQueues();
 
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('WARNING: Backpressure detected! Queue depth is 1200.')
+        expect.stringContaining('WARNING: Backpressure detected! Queue depth is 1200.'),
       );
     });
 
@@ -339,7 +339,7 @@ describe('Production-Grade Observability Stack Tests', () => {
 
       // Combined: detectionQueue 2600 wait + alertQueue 2600 wait = 5200 total
       expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('CRITICAL: High Backpressure detected!')
+        expect.stringContaining('CRITICAL: High Backpressure detected!'),
       );
       errorSpy.mockRestore();
     });
@@ -365,9 +365,7 @@ describe('Production-Grade Observability Stack Tests', () => {
     });
 
     it('returns 401 when metrics-secret header is wrong', async () => {
-      const res = await request(app)
-        .get('/metrics')
-        .set('metrics-secret', 'wrong-secret');
+      const res = await request(app).get('/metrics').set('metrics-secret', 'wrong-secret');
       expect(res.status).toBe(401);
     });
 

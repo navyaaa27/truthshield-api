@@ -17,7 +17,7 @@ jest.mock('express-rate-limit', () => {
   const mockFn = jest.fn().mockImplementation((options: any) => {
     return actualRateLimit({
       ...options,
-      max: options && typeof options.max === 'function' ? options.max : (options?.max || 1000),
+      max: options && typeof options.max === 'function' ? options.max : options?.max || 1000,
       validate: false,
     });
   });
@@ -64,17 +64,20 @@ const redisStore = new Map<string, string>();
 
 // --- Mock Redis Client ---
 jest.mock('../../src/shared/redis/redis.client.js', () => {
-  const getFullKey = (key: string) => key.startsWith('ts:') ? key : `ts:${key}`;
+  const getFullKey = (key: string) => (key.startsWith('ts:') ? key : `ts:${key}`);
   return {
     redisClient: {
-      get: jest.fn().mockImplementation(((key: any) => Promise.resolve(redisStore.get(getFullKey(key)) || null)) as any),
+      get: jest
+        .fn()
+        .mockImplementation(((key: any) =>
+          Promise.resolve(redisStore.get(getFullKey(key)) || null)) as any),
       setex: jest.fn().mockImplementation(((key: any, _ttl: any, value: any) => {
         redisStore.set(getFullKey(key), value.toString());
         return Promise.resolve('OK');
       }) as any),
       del: jest.fn().mockImplementation(((key: any) => {
         if (Array.isArray(key)) {
-          key.forEach(k => redisStore.delete(getFullKey(k)));
+          key.forEach((k) => redisStore.delete(getFullKey(k)));
         } else {
           redisStore.delete(getFullKey(key));
         }
@@ -104,7 +107,11 @@ jest.mock('../../src/shared/redis/redis.client.js', () => {
           return Promise.resolve('fake_sha_hash');
         }
         if (cmd === 'evalsha' || cmd === 'eval') {
-          const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+          const key =
+            args.find(
+              (arg) =>
+                typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:')),
+            ) || 'unknown_key';
           const fullKey = getFullKey(key);
           const val = parseInt(redisStore.get(fullKey) || '0', 10) + 1;
           redisStore.set(fullKey, val.toString());
@@ -124,7 +131,9 @@ jest.mock('../../src/shared/redis/index.js', () => ({
   redis: {
     ping: jest.fn().mockImplementation(() => Promise.resolve('PONG')),
     quit: jest.fn().mockImplementation(() => Promise.resolve()),
-    get: jest.fn().mockImplementation(((key: any) => Promise.resolve(redisStore.get(key) || null)) as any),
+    get: jest
+      .fn()
+      .mockImplementation(((key: any) => Promise.resolve(redisStore.get(key) || null)) as any),
     set: jest.fn().mockImplementation(((key: any, val: any) => {
       redisStore.set(key, val.toString());
       return Promise.resolve('OK');
@@ -169,31 +178,39 @@ jest.mock('../../src/shared/storage/s3.service.js', () => ({
     send: jest.fn().mockImplementation(() => Promise.resolve({})),
   },
   S3Service: {
-    getPresignedDownloadUrl: jest.fn().mockImplementation(() =>
-      Promise.resolve('https://s3.amazonaws.com/truthshield-reports/test-report.pdf?sig=fake')
-    ),
+    getPresignedDownloadUrl: jest
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve('https://s3.amazonaws.com/truthshield-reports/test-report.pdf?sig=fake'),
+      ),
     getPresignedUploadUrl: jest.fn().mockImplementation((params: any) =>
       Promise.resolve({
         uploadUrl: 'https://s3.amazonaws.com/truthshield-uploads/fake-upload',
         s3Key: `uploads/${params.orgId}/${params.jobId}/${params.fileName}`,
         expiresAt: new Date(Date.now() + 3600 * 1000),
-      })
+      }),
     ),
   },
 }));
 
 jest.mock('@aws-sdk/s3-request-presigner', () => ({
-  getSignedUrl: jest.fn().mockImplementation(() =>
-    Promise.resolve('https://s3.amazonaws.com/truthshield-reports/test-report.pdf?sig=fake')
-  ),
+  getSignedUrl: jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve('https://s3.amazonaws.com/truthshield-reports/test-report.pdf?sig=fake'),
+    ),
 }));
 
 jest.mock('../../src/modules/reports/report.renderer.js', () => {
   return {
     ReportRenderer: jest.fn().mockImplementation(() => ({
       initialize: jest.fn().mockImplementation(() => Promise.resolve()),
-      renderReport: jest.fn().mockImplementation(() => Promise.resolve(Buffer.from('PDF_CONTENT_MOCK'))),
-      addWatermark: jest.fn().mockImplementation(() => Promise.resolve(Buffer.from('WATERMARKED_PDF_CONTENT'))),
+      renderReport: jest
+        .fn()
+        .mockImplementation(() => Promise.resolve(Buffer.from('PDF_CONTENT_MOCK'))),
+      addWatermark: jest
+        .fn()
+        .mockImplementation(() => Promise.resolve(Buffer.from('WATERMARKED_PDF_CONTENT'))),
     })),
   };
 });
@@ -253,7 +270,14 @@ jest.mock('../../src/shared/database/pool.js', () => ({
 
     // INSERT INTO audit_logs
     if (sql.includes('insert into audit_logs')) {
-      const log = { id: crypto.randomUUID(), org_id: p[0], user_id: p[1], action: p[2], resource_type: p[3], resource_id: p[4] };
+      const log = {
+        id: crypto.randomUUID(),
+        org_id: p[0],
+        user_id: p[1],
+        action: p[2],
+        resource_type: p[3],
+        resource_id: p[4],
+      };
       mockAuditLogs.push(log);
       return Promise.resolve({ rows: [log], rowCount: 1 });
     }
@@ -267,12 +291,14 @@ jest.mock('../../src/shared/database/pool.js', () => ({
         if (match) {
           const org = mockOrgs.find((o) => o.id === match.org_id);
           return Promise.resolve({
-            rows: [{
-              ...match,
-              org_name: org?.name || 'Default Org',
-              org_plan_tier: org?.plan_tier || 'starter',
-            }],
-            rowCount: 1
+            rows: [
+              {
+                ...match,
+                org_name: org?.name || 'Default Org',
+                org_plan_tier: org?.plan_tier || 'starter',
+              },
+            ],
+            rowCount: 1,
           });
         }
         return Promise.resolve({ rows: [], rowCount: 0 });
@@ -354,12 +380,19 @@ jest.mock('../../src/shared/database/pool.js', () => ({
     if (sql.includes('from alerts')) {
       if (sql.includes('count(*)')) {
         const criticalOnly = sql.includes("severity = 'critical'");
-        const unackOnly = sql.includes('acknowledged_at is null') || sql.includes('acknowledged_at = null') || sql.includes('acknowledged_at is null');
-        const count = mockAlerts.filter(a => 
-          (criticalOnly ? a.severity === 'critical' : true) && 
-          (unackOnly ? !a.acknowledged_at : true)
+        const unackOnly =
+          sql.includes('acknowledged_at is null') ||
+          sql.includes('acknowledged_at = null') ||
+          sql.includes('acknowledged_at is null');
+        const count = mockAlerts.filter(
+          (a) =>
+            (criticalOnly ? a.severity === 'critical' : true) &&
+            (unackOnly ? !a.acknowledged_at : true),
         ).length;
-        return Promise.resolve({ rows: [{ pending_count: count, count, critical_count: count }], rowCount: 1 });
+        return Promise.resolve({
+          rows: [{ pending_count: count, count, critical_count: count }],
+          rowCount: 1,
+        });
       }
       return Promise.resolve({ rows: mockAlerts, rowCount: mockAlerts.length });
     }
@@ -386,14 +419,17 @@ jest.mock('../../src/shared/database/pool.js', () => ({
               jobs_run: mockJobs.length,
               threats_found: mockJobs.filter((j) => j.aggregated_score > 50).length,
               avg_score: 52,
-            }
+            },
           ],
-          rowCount: 1
+          rowCount: 1,
         });
       }
       // 2. Map properties correctly to match the exact properties expected in getThreatFeed mapping
-      if (sql.includes('select j.id as job_id') || sql.includes('j.aggregated_score as overall_score')) {
-        const rows = mockJobs.map(j => ({
+      if (
+        sql.includes('select j.id as job_id') ||
+        sql.includes('j.aggregated_score as overall_score')
+      ) {
+        const rows = mockJobs.map((j) => ({
           job_id: j.id,
           content_type: j.content_type,
           overall_score: j.aggregated_score,
@@ -401,39 +437,50 @@ jest.mock('../../src/shared/database/pool.js', () => ({
           risk_level: j.aggregated_risk_level,
           detected_at: j.completed_at,
           s3_key: j.s3_key || null,
-          module_results: mockResults.filter(r => r.job_id === j.id).map(r => ({
-            module: r.module,
-            score: r.score,
-            verdict: r.verdict,
-          }))
+          module_results: mockResults
+            .filter((r) => r.job_id === j.id)
+            .map((r) => ({
+              module: r.module,
+              score: r.score,
+              verdict: r.verdict,
+            })),
         }));
         return Promise.resolve({ rows, rowCount: rows.length });
       }
       if (sql.includes('count(*)::int as total') || sql.includes('threats_detected')) {
-        const completedJobs = mockJobs.filter(j => j.status === 'completed');
-        const threats = completedJobs.filter(j => j.aggregated_score > 50).length;
+        const completedJobs = mockJobs.filter((j) => j.status === 'completed');
+        const threats = completedJobs.filter((j) => j.aggregated_score > 50).length;
         const avgScore = completedJobs.length
           ? completedJobs.reduce((acc, j) => acc + j.aggregated_score, 0) / completedJobs.length
           : 0;
-        const cleanJobs = completedJobs.filter(j => j.aggregated_verdict === 'clean').length;
+        const cleanJobs = completedJobs.filter((j) => j.aggregated_verdict === 'clean').length;
         const cleanPct = completedJobs.length ? (cleanJobs / completedJobs.length) * 100 : 100;
 
         return Promise.resolve({
-          rows: [{
-            total: completedJobs.length,
-            this_period: completedJobs.length,
-            threats_detected: threats,
-            avg_score: avgScore,
-            clean_pct: cleanPct,
-          }],
-          rowCount: 1
+          rows: [
+            {
+              total: completedJobs.length,
+              this_period: completedJobs.length,
+              threats_detected: threats,
+              avg_score: avgScore,
+              clean_pct: cleanPct,
+            },
+          ],
+          rowCount: 1,
         });
       }
       if (sql.includes('count(')) {
-        if (sql.includes('date_trunc(')) { // quota usage
-          return Promise.resolve({ rows: [{ jobs_used: mockJobs.length, uploads_used: 0 }], rowCount: 1 });
+        if (sql.includes('date_trunc(')) {
+          // quota usage
+          return Promise.resolve({
+            rows: [{ jobs_used: mockJobs.length, uploads_used: 0 }],
+            rowCount: 1,
+          });
         }
-        return Promise.resolve({ rows: [{ total: String(mockJobs.length), pending_count: 0 }], rowCount: 1 });
+        return Promise.resolve({
+          rows: [{ total: String(mockJobs.length), pending_count: 0 }],
+          rowCount: 1,
+        });
       }
       if (sql.includes('where j.id = $1') || sql.includes('where id = $1')) {
         const id = p[0];
@@ -488,17 +535,18 @@ jest.mock('../../src/shared/database/pool.js', () => ({
 
     // SELECT FROM detection_results
     if (sql.includes('from detection_results')) {
-      if (sql.includes('group by module')) { // breakdown
+      if (sql.includes('group by module')) {
+        // breakdown
         return Promise.resolve({
           rows: [
             {
               module: 'deepfake',
-              total_runs: mockResults.filter(r => r.module === 'deepfake').length,
-              threats: mockResults.filter(r => r.module === 'deepfake' && r.score > 50).length,
+              total_runs: mockResults.filter((r) => r.module === 'deepfake').length,
+              threats: mockResults.filter((r) => r.module === 'deepfake' && r.score > 50).length,
               avg_score: 52,
-            }
+            },
           ],
-          rowCount: 1
+          rowCount: 1,
         });
       }
       return Promise.resolve({ rows: mockResults, rowCount: mockResults.length });
@@ -534,12 +582,22 @@ jest.mock('../../src/shared/database/pool.js', () => ({
     return Promise.resolve({ rows: [], rowCount: 0 });
   }) as any),
   writePool: {
-    query: jest.fn().mockImplementation(((text: any, params?: any[]) => (global as any).mockDbQuery?.(text, params)) as any),
-    totalCount: 10, idleCount: 5, waitingCount: 0,
+    query: jest
+      .fn()
+      .mockImplementation(((text: any, params?: any[]) =>
+        (global as any).mockDbQuery?.(text, params)) as any),
+    totalCount: 10,
+    idleCount: 5,
+    waitingCount: 0,
   } as any,
   readPool: {
-    query: jest.fn().mockImplementation(((text: any, params?: any[]) => (global as any).mockDbQuery?.(text, params)) as any),
-    totalCount: 10, idleCount: 8, waitingCount: 0,
+    query: jest
+      .fn()
+      .mockImplementation(((text: any, params?: any[]) =>
+        (global as any).mockDbQuery?.(text, params)) as any),
+    totalCount: 10,
+    idleCount: 8,
+    waitingCount: 0,
   } as any,
 }));
 
@@ -554,8 +612,12 @@ describe('TruthShield Phase 5 E2E Integration Master Suite', () => {
 
   const orgId = 'org-uuid-1';
   const userId = 'user-uuid-1';
-  const adminToken = jwt.sign({ userId, orgId, role: 'admin' }, env.JWT_SECRET, { expiresIn: '15m' });
-  const starterToken = jwt.sign({ userId, orgId, role: 'analyst' }, env.JWT_SECRET, { expiresIn: '15m' });
+  const adminToken = jwt.sign({ userId, orgId, role: 'admin' }, env.JWT_SECRET, {
+    expiresIn: '15m',
+  });
+  const starterToken = jwt.sign({ userId, orgId, role: 'analyst' }, env.JWT_SECRET, {
+    expiresIn: '15m',
+  });
 
   beforeAll((done) => {
     env.WEBSOCKET_ENABLED = true;
@@ -617,7 +679,8 @@ describe('TruthShield Phase 5 E2E Integration Master Suite', () => {
       for (const score of scores) {
         const jobId = crypto.randomUUID();
         const verdict = score > 70 ? 'manipulated' : score > 50 ? 'suspicious' : 'clean';
-        const riskLevel = score > 80 ? 'critical' : score > 70 ? 'high' : score > 50 ? 'medium' : 'none';
+        const riskLevel =
+          score > 80 ? 'critical' : score > 70 ? 'high' : score > 50 ? 'medium' : 'none';
 
         mockJobs.push({
           id: jobId,
@@ -729,18 +792,20 @@ describe('TruthShield Phase 5 E2E Integration Master Suite', () => {
           .get(`/api/v1/reports/${reportId}`)
           .set('Authorization', `Bearer ${adminToken}`)
           .expect(200);
-        
+
         status = getRes.body.status;
         if (status === 'ready') break;
         await new Promise((r) => setTimeout(r, 100)); // Sleep in test loop
       }
 
       // Force status to ready if setTimeout hadn't triggered yet in test context
-      const finishedReport = mockReports.find(r => r.id === reportId);
+      const finishedReport = mockReports.find((r) => r.id === reportId);
       if (finishedReport) {
         finishedReport.status = 'ready';
-        finishedReport.downloadUrl = 'https://s3.amazonaws.com/truthshield-reports/test-report.pdf?sig=fake';
-        finishedReport.download_url = 'https://s3.amazonaws.com/truthshield-reports/test-report.pdf?sig=fake';
+        finishedReport.downloadUrl =
+          'https://s3.amazonaws.com/truthshield-reports/test-report.pdf?sig=fake';
+        finishedReport.download_url =
+          'https://s3.amazonaws.com/truthshield-reports/test-report.pdf?sig=fake';
       }
 
       // Check state
@@ -783,9 +848,18 @@ describe('TruthShield Phase 5 E2E Integration Master Suite', () => {
   // ────────────────────────────────────────────────────────────────────────
   describe('Journey 3 — WebSocket real-time updates', () => {
     it('should push jobs, alerts, and dashboard refresh events to same-org clients but enforce strict isolation for third clients', (done) => {
-      const tokenA = jwt.sign({ userId: 'analyst-a', orgId: 'org-uuid-1', role: 'analyst' }, env.JWT_SECRET);
-      const tokenB = jwt.sign({ userId: 'analyst-b', orgId: 'org-uuid-1', role: 'analyst' }, env.JWT_SECRET);
-      const tokenC = jwt.sign({ userId: 'analyst-c', orgId: 'org-uuid-2', role: 'analyst' }, env.JWT_SECRET); // Diff Org!
+      const tokenA = jwt.sign(
+        { userId: 'analyst-a', orgId: 'org-uuid-1', role: 'analyst' },
+        env.JWT_SECRET,
+      );
+      const tokenB = jwt.sign(
+        { userId: 'analyst-b', orgId: 'org-uuid-1', role: 'analyst' },
+        env.JWT_SECRET,
+      );
+      const tokenC = jwt.sign(
+        { userId: 'analyst-c', orgId: 'org-uuid-2', role: 'analyst' },
+        env.JWT_SECRET,
+      ); // Diff Org!
 
       const clientA = createTestSocketClient(tokenA);
       const clientB = createTestSocketClient(tokenB);
@@ -882,7 +956,7 @@ describe('TruthShield Phase 5 E2E Integration Master Suite', () => {
       // 1. Create API key with proper scopes
       const scopes = ['jobs:create', 'jobs:read', 'results:read', 'uploads:create'];
       const keyHash = crypto.createHash('sha256').update('ts_live_key123').digest('hex');
-      
+
       mockApiKeys.push({
         id: 'key-uuid-1',
         org_id: orgId,
@@ -930,12 +1004,13 @@ describe('TruthShield Phase 5 E2E Integration Master Suite', () => {
       expect(getRes.body.verdict).toBe('clean');
 
       // 4. Try GET /api/v1/jobs/:id without API Key -> 401
-      await request(app)
-        .get(`/api/v1/jobs/${jobId}`)
-        .expect(401);
+      await request(app).get(`/api/v1/jobs/${jobId}`).expect(401);
 
       // 5. Try POST /api/v1/analyze using a key with insufficient scopes -> 403 (Insufficient scopes)
-      const noScopeKeyHash = crypto.createHash('sha256').update('ts_live_no_scope_key').digest('hex');
+      const noScopeKeyHash = crypto
+        .createHash('sha256')
+        .update('ts_live_no_scope_key')
+        .digest('hex');
       mockApiKeys.push({
         id: 'key-uuid-no-scope',
         org_id: orgId,
@@ -958,7 +1033,7 @@ describe('TruthShield Phase 5 E2E Integration Master Suite', () => {
         .expect(403);
 
       // 6. Revoke API key
-      const keyObj = mockApiKeys.find(k => k.id === 'key-uuid-1');
+      const keyObj = mockApiKeys.find((k) => k.id === 'key-uuid-1');
       if (keyObj) keyObj.is_active = false;
       redisStore.clear(); // Clear Redis cache so it re-fetches from database!
 
@@ -1028,7 +1103,8 @@ describe('TruthShield Phase 5 E2E Integration Master Suite', () => {
       });
 
       // 3. Verify mock axios received the signature and payload
-      const webhookPost = WebhookService.lastWebhookPost || (global as any).lastWebhookPost || lastWebhookPost;
+      const webhookPost =
+        WebhookService.lastWebhookPost || (global as any).lastWebhookPost || lastWebhookPost;
       expect(webhookPost).toBeDefined();
       expect(webhookPost.url).toBe(localWebhookUrl);
       expect(webhookPost.body.jobId).toBe(jobId);
@@ -1042,7 +1118,7 @@ describe('TruthShield Phase 5 E2E Integration Master Suite', () => {
       const rawSig = webhookPost.headers['X-TruthShield-Signature'].replace('v1=', '');
       const timestamp = webhookPost.headers['X-TruthShield-Timestamp'];
       const secret = process.env.WEBHOOK_SECRET || 'ts_webhook_secret_default_2026';
-      
+
       const expectedSig = crypto
         .createHmac('sha256', secret)
         .update(`${timestamp}.${JSON.stringify(payload)}`)
@@ -1066,11 +1142,13 @@ describe('TruthShield Phase 5 E2E Integration Master Suite', () => {
       redisStore.clear();
 
       // Seed mock PG subscription
-      mockSubscriptions = [{
-        org_id: orgId,
-        plan_tier: 'starter',
-        status: 'active',
-      }];
+      mockSubscriptions = [
+        {
+          org_id: orgId,
+          plan_tier: 'starter',
+          status: 'active',
+        },
+      ];
 
       // 3. Create 20 mock completed jobs to simulate billing usage ceiling
       mockJobs = [];
@@ -1087,7 +1165,7 @@ describe('TruthShield Phase 5 E2E Integration Master Suite', () => {
       const overview = await request(app)
         .get('/api/v1/dashboard/overview')
         .set('Authorization', `Bearer ${adminToken}`);
-      
+
       expect(Number(overview.body.quotaUsage.jobsUsed)).toBe(20);
 
       // Seed Redis rate limit store to 20 requests
@@ -1095,9 +1173,9 @@ describe('TruthShield Phase 5 E2E Integration Master Suite', () => {
 
       // 4. Override usage limit dynamically in UsageService check (Starter check limit set to 20 inside integration check)
       const { UsageService } = await import('../../src/modules/billing/usage.service.js');
-      
+
       // Override checkUsageLimit logic in mock to trigger after 20 jobs
-      jest.spyOn(UsageService, 'checkUsageLimit').mockImplementation((((oid: any, metric: any) => {
+      jest.spyOn(UsageService, 'checkUsageLimit').mockImplementation(((oid: any, metric: any) => {
         if (oid === orgId && metric === 'jobs') {
           const currentJobsCount = mockJobs.length;
           const limit = mockOrgs[0].plan_tier === 'starter' ? 20 : 15000;
@@ -1108,7 +1186,7 @@ describe('TruthShield Phase 5 E2E Integration Master Suite', () => {
           });
         }
         return Promise.resolve({ allowed: true, usage: 0, limit: 100 });
-      }) as any));
+      }) as any);
 
       // 5. Try to create 21st job -> expect 429
       const errorRes = await request(app)

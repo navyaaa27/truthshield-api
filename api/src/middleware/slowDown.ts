@@ -5,7 +5,7 @@ import { env } from '../config/env.js';
 
 const skipTrustedIps = (req: any) => {
   if (!env.RATE_LIMIT_SKIP_TRUSTED_IPS) return false;
-  const trusted = env.RATE_LIMIT_SKIP_TRUSTED_IPS.split(',').map(i => i.trim());
+  const trusted = env.RATE_LIMIT_SKIP_TRUSTED_IPS.split(',').map((i) => i.trim());
   return trusted.includes(req.ip || '');
 };
 

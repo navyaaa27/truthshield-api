@@ -19,10 +19,12 @@ async function sendEmail(recipient: string, subject: string, body: string): Prom
       host: env.SMTP_HOST || 'localhost',
       port: env.SMTP_PORT || 587,
       secure: env.SMTP_PORT === 465,
-      auth: env.SMTP_USER ? {
-        user: env.SMTP_USER,
-        pass: env.SMTP_PASS,
-      } : undefined,
+      auth: env.SMTP_USER
+        ? {
+            user: env.SMTP_USER,
+            pass: env.SMTP_PASS,
+          }
+        : undefined,
     });
 
     await transporter.sendMail({
@@ -60,13 +62,19 @@ async function processWebhookEvent(event: any): Promise<void> {
   let customerId = '';
   if (typeof event.data.object === 'object' && 'customer' in event.data.object) {
     customerId = (event.data.object as any).customer;
-  } else if (event.data.object && (event.data.object as any).id && event.data.object.object === 'customer') {
+  } else if (
+    event.data.object &&
+    (event.data.object as any).id &&
+    event.data.object.object === 'customer'
+  ) {
     customerId = (event.data.object as any).id;
   }
 
   let orgId = '';
   if (customerId) {
-    const subRes = await query(`SELECT org_id FROM subscriptions WHERE stripe_customer_id = $1`, [customerId]);
+    const subRes = await query(`SELECT org_id FROM subscriptions WHERE stripe_customer_id = $1`, [
+      customerId,
+    ]);
     orgId = subRes.rows[0]?.org_id || '';
   }
 
@@ -88,7 +96,7 @@ async function processWebhookEvent(event: any): Promise<void> {
          SET plan_tier = $1, status = $2, current_period_start = $3, current_period_end = $4,
              trial_end = $5, cancel_at_period_end = $6, updated_at = NOW()
          WHERE org_id = $7`,
-        [planTier, status, periodStart, periodEnd, trialEnd, cancelAtPeriodEnd, orgId]
+        [planTier, status, periodStart, periodEnd, trialEnd, cancelAtPeriodEnd, orgId],
       );
 
       // Update org
@@ -100,7 +108,7 @@ async function processWebhookEvent(event: any): Promise<void> {
         `UPDATE usage_records
          SET jobs_limit = $1
          WHERE org_id = $2 AND period_start <= NOW() AND period_end >= NOW()`,
-        [limits.jobs, orgId]
+        [limits.jobs, orgId],
       );
 
       // Invalidate caches
@@ -116,19 +124,23 @@ async function processWebhookEvent(event: any): Promise<void> {
         `UPDATE subscriptions
          SET status = 'canceled', plan_tier = 'starter', cancel_at_period_end = false, updated_at = NOW()
          WHERE org_id = $1`,
-        [orgId]
+        [orgId],
       );
 
       await query(`UPDATE organizations SET plan_tier = 'starter' WHERE id = $1`, [orgId]);
       await cacheService.delete(CacheKeys.orgProfile(orgId));
 
       // Send cancellation email
-      const orgRes = await query(`SELECT name, source_metadata FROM organizations WHERE id = $1`, [orgId]);
-      const emailRecipient = orgRes.rows[0]?.source_metadata?.notifications?.emailRecipient || `billing+${orgId}@truthshield.ai`;
+      const orgRes = await query(`SELECT name, source_metadata FROM organizations WHERE id = $1`, [
+        orgId,
+      ]);
+      const emailRecipient =
+        orgRes.rows[0]?.source_metadata?.notifications?.emailRecipient ||
+        `billing+${orgId}@truthshield.ai`;
       await sendEmail(
         emailRecipient,
         `[TruthShield] Subscription Canceled`,
-        `Your subscription has been canceled. Your account has been downgraded to the Starter tier.`
+        `Your subscription has been canceled. Your account has been downgraded to the Starter tier.`,
       );
     }
   }
@@ -143,7 +155,7 @@ async function processWebhookEvent(event: any): Promise<void> {
         `UPDATE subscriptions
          SET status = 'active', updated_at = NOW()
          WHERE org_id = $1`,
-        [orgId]
+        [orgId],
       );
 
       // Reset usage counters by creating a new usage_record
@@ -156,25 +168,34 @@ async function processWebhookEvent(event: any): Promise<void> {
           const limits = PLAN_LIMITS[planTier.toLowerCase()] || PLAN_LIMITS.starter;
 
           // Check if usage record already exists for the new period
-          const exists = await query(`SELECT id FROM usage_records WHERE org_id = $1 AND period_start = $2`, [orgId, periodStart]);
+          const exists = await query(
+            `SELECT id FROM usage_records WHERE org_id = $1 AND period_start = $2`,
+            [orgId, periodStart],
+          );
           if (!exists.rowCount || exists.rowCount === 0) {
             await query(
               `INSERT INTO usage_records (org_id, period_start, period_end, jobs_limit)
                VALUES ($1, $2, $3, $4)`,
-              [orgId, periodStart, periodEnd, limits.jobs]
+              [orgId, periodStart, periodEnd, limits.jobs],
             );
           }
         } catch (subErr: any) {
-          logger.error(`[StripeWebhook] Failed to retrieve subscription for usage reset: ${subErr.message}`);
+          logger.error(
+            `[StripeWebhook] Failed to retrieve subscription for usage reset: ${subErr.message}`,
+          );
         }
       }
 
-      const orgRes = await query(`SELECT name, source_metadata FROM organizations WHERE id = $1`, [orgId]);
-      const emailRecipient = orgRes.rows[0]?.source_metadata?.notifications?.emailRecipient || `billing+${orgId}@truthshield.ai`;
+      const orgRes = await query(`SELECT name, source_metadata FROM organizations WHERE id = $1`, [
+        orgId,
+      ]);
+      const emailRecipient =
+        orgRes.rows[0]?.source_metadata?.notifications?.emailRecipient ||
+        `billing+${orgId}@truthshield.ai`;
       await sendEmail(
         emailRecipient,
         `[TruthShield] Payment Succeeded`,
-        `Thank you for your payment. Your subscription remains fully active.`
+        `Thank you for your payment. Your subscription remains fully active.`,
       );
     }
   }
@@ -186,19 +207,23 @@ async function processWebhookEvent(event: any): Promise<void> {
         `UPDATE subscriptions
          SET status = 'past_due', updated_at = NOW()
          WHERE org_id = $1`,
-        [orgId]
+        [orgId],
       );
 
       // Check failure count (count of processed invoice.payment_failed events for this org)
       const countRes = await query(
         `SELECT COUNT(*) FROM billing_events
          WHERE org_id = $1 AND event_type = 'invoice.payment_failed' AND processed = true`,
-        [orgId]
+        [orgId],
       );
       const totalFailures = parseInt(countRes.rows[0].count, 10) + 1; // including the current one
 
-      const orgRes = await query(`SELECT name, source_metadata FROM organizations WHERE id = $1`, [orgId]);
-      const emailRecipient = orgRes.rows[0]?.source_metadata?.notifications?.emailRecipient || `billing+${orgId}@truthshield.ai`;
+      const orgRes = await query(`SELECT name, source_metadata FROM organizations WHERE id = $1`, [
+        orgId,
+      ]);
+      const emailRecipient =
+        orgRes.rows[0]?.source_metadata?.notifications?.emailRecipient ||
+        `billing+${orgId}@truthshield.ai`;
 
       if (totalFailures >= 3) {
         // Suspend the account after 3 failures
@@ -208,13 +233,13 @@ async function processWebhookEvent(event: any): Promise<void> {
         await sendEmail(
           emailRecipient,
           `[TruthShield] Critical: Account Suspended Due to Non-Payment`,
-          `Your subscription payment has failed 3 consecutive times. Your TruthShield account has been suspended.`
+          `Your subscription payment has failed 3 consecutive times. Your TruthShield account has been suspended.`,
         );
       } else {
         await sendEmail(
           emailRecipient,
           `[TruthShield] Action Required: Payment Failed`,
-          `Your payment has failed. Please update your billing info to prevent account suspension. Failure ${totalFailures}/3.`
+          `Your payment has failed. Please update your billing info to prevent account suspension. Failure ${totalFailures}/3.`,
         );
       }
     }
@@ -223,18 +248,24 @@ async function processWebhookEvent(event: any): Promise<void> {
   // 5. customer.subscription.trial_will_end
   if (eventType === 'customer.subscription.trial_will_end') {
     if (orgId) {
-      const orgRes = await query(`SELECT name, source_metadata FROM organizations WHERE id = $1`, [orgId]);
-      const emailRecipient = orgRes.rows[0]?.source_metadata?.notifications?.emailRecipient || `billing+${orgId}@truthshield.ai`;
+      const orgRes = await query(`SELECT name, source_metadata FROM organizations WHERE id = $1`, [
+        orgId,
+      ]);
+      const emailRecipient =
+        orgRes.rows[0]?.source_metadata?.notifications?.emailRecipient ||
+        `billing+${orgId}@truthshield.ai`;
       await sendEmail(
         emailRecipient,
         `[TruthShield] Notice: Trial ending in 3 days`,
-        `Your trial subscription is concluding in 3 days. A paid billing cycle will begin automatically.`
+        `Your trial subscription is concluding in 3 days. A paid billing cycle will begin automatically.`,
       );
     }
   }
 
   // Mark event as processed
-  await query(`UPDATE billing_events SET processed = true WHERE stripe_event_id = $1`, [stripeEventId]);
+  await query(`UPDATE billing_events SET processed = true WHERE stripe_event_id = $1`, [
+    stripeEventId,
+  ]);
 }
 
 /**
@@ -260,7 +291,10 @@ webhookRouter.post(
     const eventType = event.type;
 
     try {
-      const exists = await query(`SELECT processed FROM billing_events WHERE stripe_event_id = $1`, [stripeEventId]);
+      const exists = await query(
+        `SELECT processed FROM billing_events WHERE stripe_event_id = $1`,
+        [stripeEventId],
+      );
       if (exists.rowCount && exists.rowCount > 0) {
         logger.info(`[StripeWebhook] Event ${stripeEventId} already recorded. Skipping.`);
         return res.status(200).json({ received: true, duplicate: true });
@@ -270,13 +304,20 @@ webhookRouter.post(
       let customerId = '';
       if (typeof event.data.object === 'object' && 'customer' in event.data.object) {
         customerId = (event.data.object as any).customer;
-      } else if (event.data.object && (event.data.object as any).id && event.data.object.object === 'customer') {
+      } else if (
+        event.data.object &&
+        (event.data.object as any).id &&
+        event.data.object.object === 'customer'
+      ) {
         customerId = (event.data.object as any).id;
       }
 
       let orgId = null;
       if (customerId) {
-        const subRes = await query(`SELECT org_id FROM subscriptions WHERE stripe_customer_id = $1`, [customerId]);
+        const subRes = await query(
+          `SELECT org_id FROM subscriptions WHERE stripe_customer_id = $1`,
+          [customerId],
+        );
         orgId = subRes.rows[0]?.org_id || null;
       }
 
@@ -284,7 +325,7 @@ webhookRouter.post(
       await query(
         `INSERT INTO billing_events (org_id, stripe_event_id, event_type, processed, payload)
          VALUES ($1, $2, $3, false, $4)`,
-        [orgId, stripeEventId, eventType, JSON.stringify(event)]
+        [orgId, stripeEventId, eventType, JSON.stringify(event)],
       );
 
       // 4. Return success 200 immediately to Stripe
@@ -297,13 +338,13 @@ webhookRouter.post(
           `UPDATE billing_events 
            SET error_message = $1 
            WHERE stripe_event_id = $2`,
-          [err.message, stripeEventId]
+          [err.message, stripeEventId],
         ).catch(() => {});
       });
     } catch (err: any) {
       next(err);
     }
-  }
+  },
 );
 
 export { webhookRouter, processWebhookEvent };

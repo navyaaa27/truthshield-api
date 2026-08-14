@@ -46,7 +46,7 @@ app.use(
     contentSecurityPolicy: true,
     hsts: { maxAge: 31536000, includeSubDomains: true },
     frameguard: { action: 'deny' },
-  })
+  }),
 );
 
 // 3. Hardened Cross-Origin Resource Sharing (CORS)
@@ -54,7 +54,7 @@ app.use(
   cors({
     origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : true,
     credentials: true,
-  })
+  }),
 );
 
 // 4. Parameter Pollution and Query Injection Sanitizers
@@ -69,7 +69,12 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '500mb' }));
 
 // 6. Request Validation
-import { validateContentType, validateRequestSize, sanitizeInput, validateOrigin } from './middleware/requestValidation.js';
+import {
+  validateContentType,
+  validateRequestSize,
+  sanitizeInput,
+  validateOrigin,
+} from './middleware/requestValidation.js';
 app.use(validateContentType);
 app.use(validateRequestSize);
 app.use(sanitizeInput);
@@ -90,7 +95,7 @@ const morganStream = {
 app.use(
   morgan(':remote-addr :method :url :status :res[content-length] - :response-time ms', {
     stream: morganStream,
-  })
+  }),
 );
 
 // 6. Hardened Health Check Endpoint
@@ -133,10 +138,11 @@ app.get('/health', async (_req, res) => {
     // Queue unavailable
   }
 
-  const dbIsHealthy = dbHealth?.writePool?.connected === true && dbHealth?.readPool?.connected === true;
+  const dbIsHealthy =
+    dbHealth?.writePool?.connected === true && dbHealth?.readPool?.connected === true;
   const allHealthy = dbIsHealthy && redisHealthy;
 
-  let websocketStats = {
+  const websocketStats = {
     enabled: env.WEBSOCKET_ENABLED,
     connectedClients: 0,
     rooms: 0,
@@ -213,12 +219,16 @@ if (env.BULL_BOARD_ENABLED) {
         }
         const secret = req.headers['x-admin-secret'] || req.query.secret;
         if (!secret || secret !== env.ADMIN_SECRET) {
-          res.status(401).send('Unauthorized: Invalid or missing X-Admin-Secret header or ?secret= query parameter');
+          res
+            .status(401)
+            .send(
+              'Unauthorized: Invalid or missing X-Admin-Secret header or ?secret= query parameter',
+            );
           return;
         }
         next();
       },
-      serverAdapter.getRouter()
+      serverAdapter.getRouter(),
     );
     logger.info('🚀 Bull Board dashboard initialized at /admin/queues');
   } else {
@@ -231,14 +241,18 @@ if (env.BULL_BOARD_ENABLED) {
         }
         const secret = req.headers['x-admin-secret'] || req.query.secret;
         if (!secret || secret !== env.ADMIN_SECRET) {
-          res.status(401).send('Unauthorized: Invalid or missing X-Admin-Secret header or ?secret= query parameter');
+          res
+            .status(401)
+            .send(
+              'Unauthorized: Invalid or missing X-Admin-Secret header or ?secret= query parameter',
+            );
           return;
         }
         next();
       },
       (_req, res) => {
         res.status(200).send('Mock Bull Board Active');
-      }
+      },
     );
   }
 }
@@ -248,7 +262,10 @@ const bypassIfClientApiKey = (router: express.Router) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
     const apiKeyHeader = req.headers['x-api-key'];
-    const isApiKey = (authHeader && (authHeader.startsWith('ts_live_') || authHeader.startsWith('Bearer ts_live_'))) || apiKeyHeader;
+    const isApiKey =
+      (authHeader &&
+        (authHeader.startsWith('ts_live_') || authHeader.startsWith('Bearer ts_live_'))) ||
+      apiKeyHeader;
     if (isApiKey) {
       return next();
     }

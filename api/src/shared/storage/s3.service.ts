@@ -1,10 +1,10 @@
-import { 
-  S3Client, 
-  PutObjectCommand, 
-  GetObjectCommand, 
-  HeadObjectCommand, 
-  DeleteObjectCommand, 
-  CopyObjectCommand 
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  DeleteObjectCommand,
+  CopyObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import sharp from 'sharp';
@@ -23,7 +23,7 @@ export const s3Client = new S3Client({
   credentials: {
     accessKeyId: process.env.CF_R2_ACCESS_KEY_ID!,
     secretAccessKey: process.env.CF_R2_SECRET_ACCESS_KEY!,
-  }
+  },
 });
 
 // Supported media types and categories
@@ -44,7 +44,9 @@ const ALL_SUPPORTED_MIMETYPES = [
  */
 export function verifyOrgScope(s3Key: string, orgId: string): void {
   if (!s3Key.startsWith(`${orgId}/`)) {
-    throw new ForbiddenError('Access to S3 asset outside authorized organization context is denied');
+    throw new ForbiddenError(
+      'Access to S3 asset outside authorized organization context is denied',
+    );
   }
 }
 
@@ -55,7 +57,7 @@ export function sanitizeFileName(fileName: string): string {
   let cleaned = fileName.replace(/(\.\.[\/\\])/g, ''); // Remove traversal sequences
   cleaned = cleaned.replace(/[\/\\]/g, '_'); // Replace path separators
   cleaned = cleaned.replace(/[^a-zA-Z0-9_.-]/g, '_'); // Replace unsafe characters
-  
+
   if (cleaned.length > 100) {
     const ext = path.extname(cleaned);
     const base = path.basename(cleaned, ext);
@@ -84,7 +86,10 @@ export class S3Service {
 
     // 2. Validation: Size Constraints
     let maxSize = 0;
-    if (SUPPORTED_MIMETYPES.images.includes(mimeType) || SUPPORTED_MIMETYPES.documents.includes(mimeType)) {
+    if (
+      SUPPORTED_MIMETYPES.images.includes(mimeType) ||
+      SUPPORTED_MIMETYPES.documents.includes(mimeType)
+    ) {
       maxSize = env.MAX_FILE_SIZE_IMAGE_MB * 1024 * 1024;
     } else if (SUPPORTED_MIMETYPES.videos.includes(mimeType)) {
       maxSize = env.MAX_FILE_SIZE_VIDEO_MB * 1024 * 1024;
@@ -92,7 +97,7 @@ export class S3Service {
 
     if (fileSizeBytes > maxSize) {
       throw new ValidationError(
-        `File size exceeds the allowed limit for this type (max: ${maxSize / (1024 * 1024)}MB)`
+        `File size exceeds the allowed limit for this type (max: ${maxSize / (1024 * 1024)}MB)`,
       );
     }
 
@@ -123,7 +128,7 @@ export class S3Service {
    */
   static async confirmUpload(
     s3Key: string,
-    orgId?: string
+    orgId?: string,
   ): Promise<{ exists: boolean; actualMimeType: string; fileSizeBytes: number }> {
     if (orgId) {
       verifyOrgScope(s3Key, orgId);
@@ -158,7 +163,7 @@ export class S3Service {
   static async getPresignedDownloadUrl(
     s3Key: string,
     orgId?: string,
-    expirySeconds = 3600
+    expirySeconds = 3600,
   ): Promise<string> {
     if (orgId) {
       verifyOrgScope(s3Key, orgId);
@@ -191,7 +196,7 @@ export class S3Service {
           Bucket: bucketName,
           CopySource: encodeURI(`${bucketName}/${s3Key}`),
           Key: newKey,
-        })
+        }),
       );
 
       // 2. Delete original object
@@ -199,7 +204,7 @@ export class S3Service {
         new DeleteObjectCommand({
           Bucket: bucketName,
           Key: s3Key,
-        })
+        }),
       );
 
       logger.info(`Asset soft-deleted: Relocated S3 Key ${s3Key} to ${newKey}`);
@@ -235,9 +240,7 @@ export class S3Service {
         const arrayBuffer = await response.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
-        const thumbBuffer = await sharp(buffer)
-          .resize(400, 400, { fit: 'cover' })
-          .toBuffer();
+        const thumbBuffer = await sharp(buffer).resize(400, 400, { fit: 'cover' }).toBuffer();
 
         await s3Client.send(
           new PutObjectCommand({
@@ -245,7 +248,7 @@ export class S3Service {
             Key: thumbKey,
             Body: thumbBuffer,
             ContentType: 'image/jpeg',
-          })
+          }),
         );
       } else {
         // --- Video Thumbnailing Workflow ---
@@ -282,7 +285,7 @@ export class S3Service {
             Key: thumbKey,
             Body: thumbBuffer,
             ContentType: 'image/jpeg',
-          })
+          }),
         );
 
         // Cleanup local temp mounts
@@ -295,7 +298,9 @@ export class S3Service {
       logger.info(`Thumbnail generated successfully: ${thumbKey}`);
       return thumbKey;
     } catch (error: any) {
-      logger.warn(`Failed to generate thumbnail for ${s3Key}: ${error.message}. Returning default.`);
+      logger.warn(
+        `Failed to generate thumbnail for ${s3Key}: ${error.message}. Returning default.`,
+      );
       return thumbKey;
     }
   }

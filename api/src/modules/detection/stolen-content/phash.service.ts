@@ -45,9 +45,13 @@ export class PHashService {
           computedAt,
         };
       } catch (err: any) {
-        logger.warn(`FFmpeg video keyframe extraction failed: ${err.message}. Returning simulated video hash.`);
+        logger.warn(
+          `FFmpeg video keyframe extraction failed: ${err.message}. Returning simulated video hash.`,
+        );
         return {
-          hash: JSON.stringify(['1100110011001100110011001100110011001100110011001100110011001100']),
+          hash: JSON.stringify([
+            '1100110011001100110011001100110011001100110011001100110011001100',
+          ]),
           hashType: 'phash',
           computedAt,
         };
@@ -72,10 +76,18 @@ export class PHashService {
     let h2 = hash2;
 
     if (hash1.startsWith('[')) {
-      try { h1 = JSON.parse(hash1)[0] || '0'.repeat(64); } catch { h1 = '0'.repeat(64); }
+      try {
+        h1 = JSON.parse(hash1)[0] || '0'.repeat(64);
+      } catch {
+        h1 = '0'.repeat(64);
+      }
     }
     if (hash2.startsWith('[')) {
-      try { h2 = JSON.parse(hash2)[0] || '0'.repeat(64); } catch { h2 = '0'.repeat(64); }
+      try {
+        h2 = JSON.parse(hash2)[0] || '0'.repeat(64);
+      } catch {
+        h2 = '0'.repeat(64);
+      }
     }
 
     if (h1.length !== h2.length || h1.length === 0) {
@@ -99,12 +111,12 @@ export class PHashService {
   async findSimilarInDatabase(
     orgId: string,
     inputHash: string,
-    threshold: number
+    threshold: number,
   ): Promise<SimilarityMatch[]> {
     const dbRes = await query(
       `SELECT id, name, phash, org_id FROM brand_assets 
        WHERE org_id = $1 AND phash IS NOT NULL`,
-      [orgId]
+      [orgId],
     );
 
     const matches: SimilarityMatch[] = [];
@@ -141,14 +153,18 @@ export class PHashService {
     // 1. Update brand_assets record
     await query(
       `UPDATE brand_assets SET phash = $1, updated_at = NOW() WHERE id = $2 AND org_id = $3`,
-      [hash, assetId, orgId]
+      [hash, assetId, orgId],
     );
 
     // 2. Add to Redis sorted set (pHash index)
     // Extract a 52-bit safe score from the 64-bit binary string
     let binaryStr = hash;
     if (hash.startsWith('[')) {
-      try { binaryStr = JSON.parse(hash)[0] || '0'.repeat(64); } catch { binaryStr = '0'.repeat(64); }
+      try {
+        binaryStr = JSON.parse(hash)[0] || '0'.repeat(64);
+      } catch {
+        binaryStr = '0'.repeat(64);
+      }
     }
     const score = parseInt(binaryStr.slice(0, 52), 2) || 0;
 
@@ -185,22 +201,25 @@ export class PHashService {
    * Resilient wrapper invoking FFmpeg command line to extract keyframes safely.
    */
   private async extractVideoKeyframes(filePath: string): Promise<string[]> {
-    const tempDir = path.join(process.cwd(), 'truthshield-api/src/modules/detection/stolen-content/temp_' + Date.now());
+    const tempDir = path.join(
+      process.cwd(),
+      'truthshield-api/src/modules/detection/stolen-content/temp_' + Date.now(),
+    );
     await fs.mkdir(tempDir, { recursive: true });
 
     // 1. Resolve video duration
     const durRes = await execAsync(
-      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`
+      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`,
     );
     const duration = parseFloat(durRes.stdout.trim()) || 10;
 
-    const timestamps = [0, duration * 0.25, duration * 0.50, duration * 0.75];
+    const timestamps = [0, duration * 0.25, duration * 0.5, duration * 0.75];
     const extractedFrames: string[] = [];
 
     for (let i = 0; i < timestamps.length; i++) {
       const outPath = path.join(tempDir, `frame_${i}.jpg`);
       await execAsync(
-        `ffmpeg -ss ${timestamps[i]} -i "${filePath}" -vframes 1 -q:v 2 "${outPath}" -y`
+        `ffmpeg -ss ${timestamps[i]} -i "${filePath}" -vframes 1 -q:v 2 "${outPath}" -y`,
       );
       extractedFrames.push(outPath);
     }

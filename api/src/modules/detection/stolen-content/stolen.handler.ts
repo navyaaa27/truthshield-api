@@ -12,7 +12,9 @@ export async function handleStolenContent(job: any): Promise<any> {
   const contentType = job.content_type;
 
   if (contentType !== 'image' && contentType !== 'video') {
-    throw new Error(`Stolen content analysis is only supported for image or video content types. Received: ${contentType}`);
+    throw new Error(
+      `Stolen content analysis is only supported for image or video content types. Received: ${contentType}`,
+    );
   }
 
   // 1. Execute analysis
@@ -47,7 +49,7 @@ export async function handleStolenContent(job: any): Promise<any> {
       processingTimeMs,
       JSON.stringify(result.details),
       result.flags,
-    ]
+    ],
   );
 
   return dbRes.rows[0];

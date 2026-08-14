@@ -24,7 +24,7 @@ jest.mock('../src/shared/database/pool.js', () => {
         Promise.resolve({
           query: jest.fn().mockImplementation(() => Promise.resolve({ rows: [], rowCount: 0 })),
           release: jest.fn(),
-        })
+        }),
       ),
       end: jest.fn().mockImplementation(() => Promise.resolve()),
     },
@@ -33,7 +33,7 @@ jest.mock('../src/shared/database/pool.js', () => {
         Promise.resolve({
           query: jest.fn().mockImplementation(() => Promise.resolve({ rows: [], rowCount: 0 })),
           release: jest.fn(),
-        })
+        }),
       ),
       end: jest.fn().mockImplementation(() => Promise.resolve()),
     },
@@ -57,7 +57,11 @@ jest.mock('../src/shared/database/pool.js', () => {
       }
 
       // 2. Current period job stats
-      if (sql.includes('from detection_jobs') && sql.includes('status = \'completed\'') && sql.includes('this_period')) {
+      if (
+        sql.includes('from detection_jobs') &&
+        sql.includes("status = 'completed'") &&
+        sql.includes('this_period')
+      ) {
         const orgId = p[0];
         const days = p[1];
         const threshold = subDays(new Date(), days);
@@ -66,9 +70,15 @@ jest.mock('../src/shared/database/pool.js', () => {
         const currentPeriodJobs = orgJobs.filter((j) => new Date(j.completed_at) > threshold);
         const threats = currentPeriodJobs.filter((j) => j.aggregated_score > 50).length;
         const totalScore = currentPeriodJobs.reduce((acc, j) => acc + j.aggregated_score, 0);
-        const avgScore = currentPeriodJobs.length > 0 ? parseFloat((totalScore / currentPeriodJobs.length).toFixed(1)) : 0;
+        const avgScore =
+          currentPeriodJobs.length > 0
+            ? parseFloat((totalScore / currentPeriodJobs.length).toFixed(1))
+            : 0;
         const cleanCount = currentPeriodJobs.filter((j) => j.aggregated_verdict === 'clean').length;
-        const cleanPct = currentPeriodJobs.length > 0 ? parseFloat((cleanCount / currentPeriodJobs.length * 100).toFixed(1)) : 100;
+        const cleanPct =
+          currentPeriodJobs.length > 0
+            ? parseFloat(((cleanCount / currentPeriodJobs.length) * 100).toFixed(1))
+            : 100;
 
         return Promise.resolve({
           rows: [
@@ -98,7 +108,7 @@ jest.mock('../src/shared/database/pool.js', () => {
             j.status === 'completed' &&
             new Date(j.completed_at) > tStart &&
             new Date(j.completed_at) <= tMiddle &&
-            j.aggregated_score > 50
+            j.aggregated_score > 50,
         ).length;
 
         return Promise.resolve({
@@ -108,10 +118,13 @@ jest.mock('../src/shared/database/pool.js', () => {
       }
 
       // 4. Pending reviews
-      if (sql.includes('select count(*)::int as pending_count') && sql.includes('from human_reviews')) {
+      if (
+        sql.includes('select count(*)::int as pending_count') &&
+        sql.includes('from human_reviews')
+      ) {
         const orgId = p[0];
         const count = mockReviews.filter(
-          (r) => r.org_id === orgId && ['pending', 'assigned', 'in_review'].includes(r.status)
+          (r) => r.org_id === orgId && ['pending', 'assigned', 'in_review'].includes(r.status),
         ).length;
 
         return Promise.resolve({
@@ -124,7 +137,7 @@ jest.mock('../src/shared/database/pool.js', () => {
       if (sql.includes('select count(*)::int as critical_count') && sql.includes('from alerts')) {
         const orgId = p[0];
         const count = mockAlerts.filter(
-          (a) => a.org_id === orgId && a.severity === 'critical' && !a.acknowledged_at
+          (a) => a.org_id === orgId && a.severity === 'critical' && !a.acknowledged_at,
         ).length;
 
         return Promise.resolve({
@@ -140,7 +153,9 @@ jest.mock('../src/shared/database/pool.js', () => {
         limitDate.setDate(1);
         limitDate.setHours(0, 0, 0, 0);
 
-        const currentMonthJobs = mockJobs.filter((j) => j.org_id === orgId && new Date(j.created_at) > limitDate);
+        const currentMonthJobs = mockJobs.filter(
+          (j) => j.org_id === orgId && new Date(j.created_at) > limitDate,
+        );
         const uploads = currentMonthJobs.filter((j) => j.s3_key).length;
 
         return Promise.resolve({
@@ -155,12 +170,16 @@ jest.mock('../src/shared/database/pool.js', () => {
       }
 
       // 7. Threat feed paginated retrieval
-      if (sql.includes('select') && sql.includes('from detection_jobs j') && sql.includes('module_results')) {
+      if (
+        sql.includes('select') &&
+        sql.includes('from detection_jobs j') &&
+        sql.includes('module_results')
+      ) {
         const orgId = p[0];
         const orgJobs = mockJobs.filter((j) => j.org_id === orgId && j.status === 'completed');
 
         // Apply filters in mock if specified
-        let filtered = [...orgJobs];
+        const filtered = [...orgJobs];
         if (p.length > 2) {
           // Simplistic filter mocks matching page / limit offsets
         }
@@ -196,7 +215,10 @@ jest.mock('../src/shared/database/pool.js', () => {
       }
 
       // 8. Feed count
-      if (sql.includes('select count(distinct j.id)::int') && sql.includes('from detection_jobs j')) {
+      if (
+        sql.includes('select count(distinct j.id)::int') &&
+        sql.includes('from detection_jobs j')
+      ) {
         const orgId = p[0];
         const count = mockJobs.filter((j) => j.org_id === orgId && j.status === 'completed').length;
         return Promise.resolve({
@@ -214,7 +236,8 @@ jest.mock('../src/shared/database/pool.js', () => {
         // Group mock completed jobs by day
         const grouped: Record<string, any> = {};
         const orgJobs = mockJobs.filter(
-          (j) => j.org_id === orgId && j.status === 'completed' && new Date(j.created_at) > threshold
+          (j) =>
+            j.org_id === orgId && j.status === 'completed' && new Date(j.created_at) > threshold,
         );
 
         for (const job of orgJobs) {
@@ -359,7 +382,9 @@ jest.mock('../src/shared/database/pool.js', () => {
 // Mock Redis client
 jest.mock('../src/shared/redis/redis.client.js', () => ({
   redisClient: {
-    get: jest.fn().mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
+    get: jest
+      .fn()
+      .mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
     setex: jest.fn().mockImplementation(((key: any, _ttl: any, val: any) => {
       mockRedisStore[key] = val;
       mockRedisStore[`ts:${key}`] = val;
@@ -390,7 +415,9 @@ jest.mock('../src/shared/redis/redis.client.js', () => ({
 // Mock Redis index entry point
 jest.mock('../src/shared/redis/index.js', () => ({
   redis: {
-    get: jest.fn().mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
+    get: jest
+      .fn()
+      .mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
     set: jest.fn().mockImplementation(((key: any, val: any) => {
       mockRedisStore[key] = val;
       return Promise.resolve('OK');
@@ -438,11 +465,9 @@ const USER_ID = '00000000-0000-0000-0000-000000000002';
 
 // Token generation helper
 function generateTestToken(role = 'admin') {
-  return jwt.sign(
-    { userId: USER_ID, orgId: ORG_ID, role },
-    env.JWT_SECRET || 'secret',
-    { expiresIn: '1h' }
-  );
+  return jwt.sign({ userId: USER_ID, orgId: ORG_ID, role }, env.JWT_SECRET || 'secret', {
+    expiresIn: '1h',
+  });
 }
 
 describe('Brand Dashboard Analytics API Test Suite', () => {
@@ -450,9 +475,7 @@ describe('Brand Dashboard Analytics API Test Suite', () => {
 
   beforeEach(() => {
     token = generateTestToken();
-    mockOrganizations = [
-      { id: ORG_ID, name: 'TruthShield Media', plan_tier: 'starter' },
-    ];
+    mockOrganizations = [{ id: ORG_ID, name: 'TruthShield Media', plan_tier: 'starter' }];
     mockJobs = [
       {
         id: 'job-1',
@@ -482,12 +505,32 @@ describe('Brand Dashboard Analytics API Test Suite', () => {
     ];
 
     mockResults = [
-      { id: 'res-1', job_id: 'job-1', org_id: ORG_ID, module: 'deepfake', score: 85, verdict: 'manipulated' },
-      { id: 'res-2', job_id: 'job-2', org_id: ORG_ID, module: 'fake_news', score: 10, verdict: 'clean' },
+      {
+        id: 'res-1',
+        job_id: 'job-1',
+        org_id: ORG_ID,
+        module: 'deepfake',
+        score: 85,
+        verdict: 'manipulated',
+      },
+      {
+        id: 'res-2',
+        job_id: 'job-2',
+        org_id: ORG_ID,
+        module: 'fake_news',
+        score: 10,
+        verdict: 'clean',
+      },
     ];
 
     mockAlerts = [
-      { id: 'alert-1', org_id: ORG_ID, job_id: 'job-1', severity: 'critical', acknowledged_at: null },
+      {
+        id: 'alert-1',
+        org_id: ORG_ID,
+        job_id: 'job-1',
+        severity: 'critical',
+        acknowledged_at: null,
+      },
     ];
 
     mockReviews = [
@@ -638,9 +681,7 @@ describe('Brand Dashboard Analytics API Test Suite', () => {
   describe('N+1 Query Protections', () => {
     it('should retrieve the complete executive overview using parallel queries without N+1 loops', async () => {
       queryCount = 0;
-      await request(app)
-        .get('/api/v1/dashboard/overview')
-        .set('Authorization', `Bearer ${token}`);
+      await request(app).get('/api/v1/dashboard/overview').set('Authorization', `Bearer ${token}`);
 
       // Overview should execute exactly 6 queries in parallel
       expect(queryCount).toBe(6);
@@ -650,9 +691,7 @@ describe('Brand Dashboard Analytics API Test Suite', () => {
   describe('Multi-Layered Caching & Invalidation Journeys', () => {
     it('should invalidate overview cache instantly when a job transitions to completed', async () => {
       // 1. Initial overview fetches and caches result
-      await request(app)
-        .get('/api/v1/dashboard/overview')
-        .set('Authorization', `Bearer ${token}`);
+      await request(app).get('/api/v1/dashboard/overview').set('Authorization', `Bearer ${token}`);
 
       const cacheKey = `ts:org:${ORG_ID}:dashboard:overview`;
       expect(mockRedisStore[cacheKey]).toBeDefined();
@@ -666,9 +705,7 @@ describe('Brand Dashboard Analytics API Test Suite', () => {
 
     it('should invalidate overview cache instantly when a human review task is completed', async () => {
       // 1. Initial overview fetches and caches result
-      await request(app)
-        .get('/api/v1/dashboard/overview')
-        .set('Authorization', `Bearer ${token}`);
+      await request(app).get('/api/v1/dashboard/overview').set('Authorization', `Bearer ${token}`);
 
       const cacheKey = `ts:org:${ORG_ID}:dashboard:overview`;
       expect(mockRedisStore[cacheKey]).toBeDefined();

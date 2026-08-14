@@ -80,7 +80,9 @@ jest.mock('../src/shared/database/pool.js', () => {
         if (job) {
           job.retry_count += 1;
           return Promise.resolve({
-            rows: [{ retry_count: job.retry_count, max_retries: job.max_retries, org_id: job.org_id }],
+            rows: [
+              { retry_count: job.retry_count, max_retries: job.max_retries, org_id: job.org_id },
+            ],
             rowCount: 1,
           });
         }
@@ -88,7 +90,11 @@ jest.mock('../src/shared/database/pool.js', () => {
       }
 
       // 5. UPDATE aggregation columns
-      else if (sql.includes('update') && sql.includes('detection_jobs') && sql.includes('aggregated_score')) {
+      else if (
+        sql.includes('update') &&
+        sql.includes('detection_jobs') &&
+        sql.includes('aggregated_score')
+      ) {
         const jobId = p[p.length - 1];
         const job = mockJobs.find((j) => j.id === jobId);
         if (job) {
@@ -134,7 +140,9 @@ jest.mock('../src/shared/redis/index.js', () => {
 jest.mock('../src/shared/redis/redis.client.js', () => ({
   redisClient: {
     get: jest.fn().mockImplementation(((_key: any) => Promise.resolve(null)) as any),
-    setex: jest.fn().mockImplementation(((_key: any, _ttl: any, _val: any) => Promise.resolve('OK')) as any),
+    setex: jest
+      .fn()
+      .mockImplementation(((_key: any, _ttl: any, _val: any) => Promise.resolve('OK')) as any),
     del: jest.fn().mockImplementation(((_key: any) => Promise.resolve(1)) as any),
     keys: jest.fn().mockImplementation((() => Promise.resolve([])) as any),
     incr: jest.fn().mockImplementation((() => Promise.resolve(1)) as any),
@@ -145,7 +153,7 @@ jest.mock('../src/shared/redis/redis.client.js', () => ({
         return Promise.resolve('fake_sha_hash');
       }
       if (cmd === 'evalsha' || cmd === 'eval') {
-        return Promise.resolve([1, 60]); 
+        return Promise.resolve([1, 60]);
       }
       return Promise.resolve();
     }) as any),
@@ -240,7 +248,7 @@ describe('Job Queue Infrastructure Suite', () => {
 
       expect(mockQueueAdd).toHaveBeenCalled();
       const args = mockQueueAdd.mock.calls[0] as any[];
-      
+
       expect(args[0]).toBe('detection-task');
       expect(args[1].jobId).toBe(jobId);
       expect(args[1].orgId).toBe(orgId);
@@ -257,9 +265,9 @@ describe('Job Queue Infrastructure Suite', () => {
         status: 'completed',
       };
 
-      await expect(
-        dispatchJob(completedJob as any)
-      ).rejects.toThrow("Only pending jobs can be dispatched to queue");
+      await expect(dispatchJob(completedJob as any)).rejects.toThrow(
+        'Only pending jobs can be dispatched to queue',
+      );
     });
 
     it('dispatchJob should successfully add job to BullMQ queue and transition DB status to queued', async () => {
@@ -276,7 +284,7 @@ describe('Job Queue Infrastructure Suite', () => {
       const worker = new DetectionWorker();
       mockJobs[0].status = 'queued';
       mockJobs[0].s3_key = 'org-uuid-test/jobs/job-uuid-123/image.jpg';
-      
+
       const mockJob = {
         id: jobId,
         data: {
@@ -299,7 +307,7 @@ describe('Job Queue Infrastructure Suite', () => {
       const worker = new DetectionWorker();
       const plan = worker.buildExecutionPlan(
         ['deepfake', 'fake_news', 'metadata_tampering'],
-        'article'
+        'article',
       );
 
       expect(plan.skipped).toContainEqual({
@@ -314,7 +322,7 @@ describe('Job Queue Infrastructure Suite', () => {
       const worker = new DetectionWorker();
       const plan = worker.buildExecutionPlan(
         ['metadata_tampering', 'deepfake', 'stolen_content'],
-        'image'
+        'image',
       );
 
       expect(plan.parallel).toContain('metadata_tampering');
@@ -325,10 +333,7 @@ describe('Job Queue Infrastructure Suite', () => {
 
     it('buildExecutionPlan puts deepfake in sequential for video', () => {
       const worker = new DetectionWorker();
-      const plan = worker.buildExecutionPlan(
-        ['deepfake', 'stolen_content'],
-        'video'
-      );
+      const plan = worker.buildExecutionPlan(['deepfake', 'stolen_content'], 'video');
 
       expect(plan.sequential).toContain('deepfake');
       expect(plan.parallel).toContain('stolen_content');
@@ -337,10 +342,7 @@ describe('Job Queue Infrastructure Suite', () => {
 
     it('buildExecutionPlan skips fake_news for video contentType', () => {
       const worker = new DetectionWorker();
-      const plan = worker.buildExecutionPlan(
-        ['fake_news', 'stolen_content'],
-        'video'
-      );
+      const plan = worker.buildExecutionPlan(['fake_news', 'stolen_content'], 'video');
 
       expect(plan.skipped).toContainEqual({
         module: 'fake_news',
@@ -351,10 +353,7 @@ describe('Job Queue Infrastructure Suite', () => {
 
     it('buildExecutionPlan skips stolen_content for article contentType', () => {
       const worker = new DetectionWorker();
-      const plan = worker.buildExecutionPlan(
-        ['stolen_content', 'fake_news'],
-        'article'
-      );
+      const plan = worker.buildExecutionPlan(['stolen_content', 'fake_news'], 'article');
 
       expect(plan.skipped).toContainEqual({
         module: 'stolen_content',
@@ -365,7 +364,7 @@ describe('Job Queue Infrastructure Suite', () => {
 
     it('One module failing does not prevent others from running', async () => {
       const worker = new DetectionWorker();
-      
+
       mockJobs[0].s3_key = 'org-uuid-test/jobs/job-uuid-123/image.jpg';
       mockJobs[0].content_type = 'image';
 
@@ -390,7 +389,7 @@ describe('Job Queue Infrastructure Suite', () => {
 
       mockJobs[0].status = 'queued';
       mockJobs[0].s3_key = 'org-uuid-test/jobs/job-uuid-123/image.jpg';
-      
+
       const mockJob = {
         id: jobId,
         data: {
@@ -403,12 +402,10 @@ describe('Job Queue Infrastructure Suite', () => {
       await worker.process(mockJob as any);
 
       // Find the UPDATE call that persists aggregation
-      const updateCalls = dbQuery.mock.calls.filter(
-        (c: any[]) => {
-          const sql = (c[0] || '').toLowerCase();
-          return sql.includes('update') && sql.includes('aggregated_score');
-        }
-      );
+      const updateCalls = dbQuery.mock.calls.filter((c: any[]) => {
+        const sql = (c[0] || '').toLowerCase();
+        return sql.includes('update') && sql.includes('aggregated_score');
+      });
 
       expect(updateCalls.length).toBeGreaterThanOrEqual(1);
     });
@@ -462,8 +459,7 @@ describe('Job Queue Infrastructure Suite', () => {
 
   describe('Bull Board Authorization Integration Tests', () => {
     it('GET /admin/queues should return 401 if X-Admin-Secret header is incorrect or missing', async () => {
-      const res = await request(app)
-        .get('/admin/queues');
+      const res = await request(app).get('/admin/queues');
 
       expect(res.status).toBe(401);
     });

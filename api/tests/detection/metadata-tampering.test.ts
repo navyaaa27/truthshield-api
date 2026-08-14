@@ -67,7 +67,8 @@ describe('Metadata Tampering Detection Module Tests', () => {
       const buffer = await fs.readFile(targetPath);
       return {
         ok: true,
-        arrayBuffer: async () => buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength),
+        arrayBuffer: async () =>
+          buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength),
       } as any;
     }) as any;
   });
@@ -94,7 +95,7 @@ describe('Metadata Tampering Detection Module Tests', () => {
         Promise.resolve({
           Software: 'Adobe Photoshop CC 2023',
           Model: 'iPhone 15 Pro',
-        })
+        }),
       );
 
       const exifRes = await (analyzer as any).analyzeExif(modifiedPath);
@@ -110,7 +111,7 @@ describe('Metadata Tampering Detection Module Tests', () => {
         Promise.resolve({
           CreateDate: '2026-05-24T10:00:00Z',
           ModifyDate: '2026-05-24T12:00:00Z',
-        })
+        }),
       );
 
       const exifRes = await (analyzer as any).analyzeExif(modifiedPath);
@@ -134,24 +135,48 @@ describe('Metadata Tampering Detection Module Tests', () => {
 
       // 1. Clean range (0-25)
       const cleanExif = { flags: [] };
-      const cleanEla = { skipped: true, elaScore: 0, suspiciousRegions: false, meanDiff: 0, stdDev: 0 };
+      const cleanEla = {
+        skipped: true,
+        elaScore: 0,
+        suspiciousRegions: false,
+        meanDiff: 0,
+        stdDev: 0,
+      };
       const cleanHash = { sha256: 'xyz', hashChanged: false };
-      
+
       const cleanScore = (analyzer as any).calculateFinalScore(cleanExif, cleanEla, cleanHash, 3);
       expect(cleanScore.verdict).toBe('clean');
       expect(cleanScore.score).toBeLessThanOrEqual(25);
 
       // 2. Suspicious range (26-50)
-      const suspExif = { flags: ['editing_software_detected', 'gps_inconsistent'], software: 'Photoshop' };
-      const suspEla = { skipped: false, elaScore: 30, suspiciousRegions: false, meanDiff: 10, stdDev: 30 };
+      const suspExif = {
+        flags: ['editing_software_detected', 'gps_inconsistent'],
+        software: 'Photoshop',
+      };
+      const suspEla = {
+        skipped: false,
+        elaScore: 30,
+        suspiciousRegions: false,
+        meanDiff: 10,
+        stdDev: 30,
+      };
       const suspHash = { sha256: 'xyz', hashChanged: false };
 
       const suspScore = (analyzer as any).calculateFinalScore(suspExif, suspEla, suspHash, 3);
       expect(suspScore.verdict).toBe('suspicious');
 
       // 3. Manipulated range (76-100)
-      const manipExif = { flags: ['editing_software_detected', 'metadata_modification_gap'], software: 'Photoshop' };
-      const manipEla = { skipped: false, elaScore: 80, suspiciousRegions: true, meanDiff: 40, stdDev: 80 };
+      const manipExif = {
+        flags: ['editing_software_detected', 'metadata_modification_gap'],
+        software: 'Photoshop',
+      };
+      const manipEla = {
+        skipped: false,
+        elaScore: 80,
+        suspiciousRegions: true,
+        meanDiff: 40,
+        stdDev: 80,
+      };
       const manipHash = { sha256: 'xyz', hashChanged: true };
 
       const manipScore = (analyzer as any).calculateFinalScore(manipExif, manipEla, manipHash, 3);
@@ -166,11 +191,11 @@ describe('Metadata Tampering Detection Module Tests', () => {
 
       // Force a rejection inside exifr to simulate parsing failure
       (exifr.parse as any).mockImplementationOnce(() =>
-        Promise.reject(new Error('Fatal parsing interrupt'))
+        Promise.reject(new Error('Fatal parsing interrupt')),
       );
 
       const s3Key = 'org-1/jobs/job-1/clean.jpg';
-      
+
       // Execute should complete gracefully by catching inner analyzer failures
       const result = await analyzer.analyze(s3Key, 'image/jpeg');
       expect(result).toBeDefined();
@@ -188,7 +213,7 @@ describe('Metadata Tampering Detection Module Tests', () => {
           Make: 'Apple',
           Model: 'iPhone 13 Pro',
           ISO: 50,
-        })
+        }),
       );
 
       const s3Key = 'org-1/jobs/job-1/clean.jpg';

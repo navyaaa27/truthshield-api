@@ -13,7 +13,9 @@ export class FrameExtractor {
     return new Promise((resolve) => {
       ffmpeg.ffprobe(videoPath, (err, metadata) => {
         if (err) {
-          logger.warn(`ffprobe failed or not installed: ${err.message}. Defaulting duration to 10s for mocking.`);
+          logger.warn(
+            `ffprobe failed or not installed: ${err.message}. Defaulting duration to 10s for mocking.`,
+          );
           // Graceful fallback if ffprobe isn't globally configured in the system environment
           return resolve(10);
         }
@@ -33,7 +35,7 @@ export class FrameExtractor {
   async extractSingleFrame(
     videoPath: string,
     timestampSeconds: number,
-    outputPath: string
+    outputPath: string,
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       ffmpeg(videoPath)
@@ -58,7 +60,7 @@ export class FrameExtractor {
   async extractFrames(
     videoPath: string,
     outputDir: string,
-    maxFrames: number
+    maxFrames: number,
   ): Promise<ExtractedFrame[]> {
     const extracted: ExtractedFrame[] = [];
     let duration = 10;
@@ -74,7 +76,9 @@ export class FrameExtractor {
       timestamps.push(Math.min(i * step, duration));
     }
 
-    logger.info(`Extracting ${timestamps.length} keyframes at timestamps: ${timestamps.join(', ')}`);
+    logger.info(
+      `Extracting ${timestamps.length} keyframes at timestamps: ${timestamps.join(', ')}`,
+    );
 
     for (let index = 0; index < timestamps.length; index++) {
       const timestamp = timestamps[index];

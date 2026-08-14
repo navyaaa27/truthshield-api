@@ -27,7 +27,7 @@ export async function setupScheduledJobs(): Promise<void> {
           pattern: '0 * * * *', // Every hour
         },
         jobId: 'sla-monitoring-hourly',
-      }
+      },
     );
     logger.info('Hourly SLA monitoring job scheduled successfully');
   } catch (err: any) {
@@ -50,6 +50,6 @@ if (process.env.NODE_ENV !== 'test' && process.env.MOCK_INFRA !== 'true') {
         }
       }
     },
-    { connection }
+    { connection },
   );
 }

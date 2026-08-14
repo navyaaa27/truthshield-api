@@ -3,7 +3,12 @@ import { cacheService } from '../../shared/redis/cache.service.js';
 import { env } from '../../config/env.js';
 import { logger } from '../../utils/logger.js';
 import { ForbiddenError, NotFoundError, ValidationError } from '../../middleware/errorHandler.js';
-import { HumanReview, SubmitReviewDTO, ReviewQueueStats, ReviewerWorkload } from './review.types.js';
+import {
+  HumanReview,
+  SubmitReviewDTO,
+  ReviewQueueStats,
+  ReviewerWorkload,
+} from './review.types.js';
 import { DetectionResult, DetectionJob } from '../jobs/job.types.js';
 import { aggregateResults } from '../jobs/job.aggregator.js';
 import nodemailer from 'nodemailer';
@@ -84,7 +89,7 @@ export class ReviewService {
         sla_deadline
       ) VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7)
       RETURNING *`,
-      [result.id, job.id, job.org_id, priority, result.score, result.verdict, slaDeadline]
+      [result.id, job.id, job.org_id, priority, result.score, result.verdict, slaDeadline],
     );
 
     const review = insertRes.rows[0];
@@ -98,10 +103,12 @@ export class ReviewService {
           host: env.SMTP_HOST || 'localhost',
           port: env.SMTP_PORT || 587,
           secure: env.SMTP_PORT === 465,
-          auth: env.SMTP_USER ? {
-            user: env.SMTP_USER,
-            pass: env.SMTP_PASS,
-          } : undefined,
+          auth: env.SMTP_USER
+            ? {
+                user: env.SMTP_USER,
+                pass: env.SMTP_PASS,
+              }
+            : undefined,
         });
 
         await transporter.sendMail({
@@ -134,10 +141,12 @@ export class ReviewService {
     // 2. Check workload limit
     const workloadRes = await query(
       `SELECT COUNT(*)::int as count FROM human_reviews WHERE assigned_to = $1 AND status IN ('assigned', 'in_review')`,
-      [analystUserId]
+      [analystUserId],
     );
     if (workloadRes.rows[0].count >= 10) {
-      throw new ValidationError('Analyst has reached the maximum workload limit of 10 active reviews');
+      throw new ValidationError(
+        'Analyst has reached the maximum workload limit of 10 active reviews',
+      );
     }
 
     // 3. Retrieve review
@@ -153,7 +162,7 @@ export class ReviewService {
        SET assigned_to = $1, assigned_at = NOW(), status = 'assigned', updated_at = NOW() 
        WHERE id = $2 
        RETURNING *`,
-      [analystUserId, reviewId]
+      [analystUserId, reviewId],
     );
     const updatedReview = updatedRes.rows[0];
 
@@ -161,7 +170,7 @@ export class ReviewService {
     await query(
       `INSERT INTO audit_logs (org_id, user_id, action, resource_type, resource_id)
        VALUES ($1, $2, 'REVIEW_ASSIGNED', 'human_reviews', $3)`,
-      [review.org_id, analystUserId, reviewId]
+      [review.org_id, analystUserId, reviewId],
     );
 
     logger.info(`Review ${reviewId} assigned to analyst ${analystUserId}`);
@@ -188,7 +197,7 @@ export class ReviewService {
        SET started_at = NOW(), status = 'in_review', updated_at = NOW() 
        WHERE id = $1 
        RETURNING *`,
-      [reviewId]
+      [reviewId],
     );
 
     return updatedRes.rows[0];
@@ -197,11 +206,17 @@ export class ReviewService {
   /**
    * Submit analyst verdict and complete review.
    */
-  static async submitReview(reviewId: string, analystUserId: string, dto: SubmitReviewDTO): Promise<HumanReview> {
+  static async submitReview(
+    reviewId: string,
+    analystUserId: string,
+    dto: SubmitReviewDTO,
+  ): Promise<HumanReview> {
     const { reviewerVerdict, reviewerNotes, reviewerConfidence, overrideReason } = dto;
 
     if (!reviewerVerdict || !reviewerNotes || !reviewerConfidence) {
-      throw new ValidationError('Required fields are missing: reviewerVerdict, reviewerNotes, reviewerConfidence');
+      throw new ValidationError(
+        'Required fields are missing: reviewerVerdict, reviewerNotes, reviewerConfidence',
+      );
     }
 
     const reviewRes = await query(`SELECT * FROM human_reviews WHERE id = $1`, [reviewId]);
@@ -225,7 +240,7 @@ export class ReviewService {
            updated_at = NOW() 
        WHERE id = $5 
        RETURNING *`,
-      [reviewerVerdict, reviewerNotes, reviewerConfidence, overrideReason || null, reviewId]
+      [reviewerVerdict, reviewerNotes, reviewerConfidence, overrideReason || null, reviewId],
     );
     const completedReview = updatedRes.rows[0];
 
@@ -236,7 +251,7 @@ export class ReviewService {
     await query(
       `INSERT INTO audit_logs (org_id, user_id, action, resource_type, resource_id)
        VALUES ($1, $2, 'REVIEW_COMPLETED', 'human_reviews', $3)`,
-      [review.org_id, analystUserId, reviewId]
+      [review.org_id, analystUserId, reviewId],
     );
 
     // Invalidate organization cache
@@ -258,7 +273,9 @@ export class ReviewService {
     // valid detection_result verdicts are: 'clean', 'suspicious', 'manipulated', 'requires_review'
     if (['clean', 'suspicious', 'manipulated'].includes(verdict)) {
       // Fetch current result to see if we're actually overriding the verdict
-      const resultRes = await query(`SELECT * FROM detection_results WHERE id = $1`, [review.result_id]);
+      const resultRes = await query(`SELECT * FROM detection_results WHERE id = $1`, [
+        review.result_id,
+      ]);
       const currentResult = resultRes.rows[0];
 
       if (currentResult) {
@@ -275,13 +292,15 @@ export class ReviewService {
                reviewed_at = NOW(), 
                review_notes = $4 
            WHERE id = $5`,
-          [verdict, flags, review.assigned_to, review.reviewer_notes, review.result_id]
+          [verdict, flags, review.assigned_to, review.reviewer_notes, review.result_id],
         );
       }
     }
 
     // Fetch all detection results for this job to recalculate aggregation
-    const resultsRes = await query(`SELECT * FROM detection_results WHERE job_id = $1`, [review.job_id]);
+    const resultsRes = await query(`SELECT * FROM detection_results WHERE job_id = $1`, [
+      review.job_id,
+    ]);
     const aggregation = aggregateResults(resultsRes.rows);
 
     // Update job aggregation fields
@@ -292,7 +311,7 @@ export class ReviewService {
            aggregated_risk_level = $3,
            updated_at = NOW()
        WHERE id = $4`,
-      [aggregation.overallScore, aggregation.overallVerdict, aggregation.riskLevel, review.job_id]
+      [aggregation.overallScore, aggregation.overallVerdict, aggregation.riskLevel, review.job_id],
     );
 
     // If verdict changed significantly (e.g. was clean/suspicious and is now manipulated)
@@ -302,7 +321,7 @@ export class ReviewService {
       await query(
         `INSERT INTO alerts (org_id, job_id, result_id, severity, title, summary, notification_sent, notification_channels)
          VALUES ($1, $2, $3, 'high', 'Human Override: Manipulated Content Detected', 'Analyst marked the result as manipulated after human review.', false, '{}')`,
-        [review.org_id, review.job_id, review.result_id]
+        [review.org_id, review.job_id, review.result_id],
       );
     }
 
@@ -312,7 +331,11 @@ export class ReviewService {
         `UPDATE alerts 
          SET resolved_by = $1, resolved_at = NOW(), updated_at = NOW() 
          WHERE (result_id = $2 OR job_id = $3) AND resolved_at IS NULL`,
-        [review.assigned_to || '00000000-0000-0000-0000-000000000000', review.result_id, review.job_id]
+        [
+          review.assigned_to || '00000000-0000-0000-0000-000000000000',
+          review.result_id,
+          review.job_id,
+        ],
       );
     }
   }
@@ -320,7 +343,11 @@ export class ReviewService {
   /**
    * Escalate a review task to a senior analyst.
    */
-  static async escalateReview(reviewId: string, analystUserId: string, reason: string): Promise<HumanReview> {
+  static async escalateReview(
+    reviewId: string,
+    analystUserId: string,
+    reason: string,
+  ): Promise<HumanReview> {
     const reviewRes = await query(`SELECT * FROM human_reviews WHERE id = $1`, [reviewId]);
     const review = reviewRes.rows[0];
     if (!review) {
@@ -339,7 +366,7 @@ export class ReviewService {
            updated_at = NOW() 
        WHERE id = $2 
        RETURNING *`,
-      [reason, reviewId]
+      [reason, reviewId],
     );
     const escalatedReview = updatedRes.rows[0];
 
@@ -351,10 +378,12 @@ export class ReviewService {
           host: env.SMTP_HOST || 'localhost',
           port: env.SMTP_PORT || 587,
           secure: env.SMTP_PORT === 465,
-          auth: env.SMTP_USER ? {
-            user: env.SMTP_USER,
-            pass: env.SMTP_PASS,
-          } : undefined,
+          auth: env.SMTP_USER
+            ? {
+                user: env.SMTP_USER,
+                pass: env.SMTP_PASS,
+              }
+            : undefined,
         });
 
         await transporter.sendMail({
@@ -384,7 +413,14 @@ export class ReviewService {
         ai_verdict,
         sla_deadline
       ) VALUES ($1, $2, $3, 'pending', 'urgent', $4, $5, $6)`,
-      [review.result_id, review.job_id, review.org_id, review.ai_score, review.ai_verdict, slaDeadline]
+      [
+        review.result_id,
+        review.job_id,
+        review.org_id,
+        review.ai_score,
+        review.ai_verdict,
+        slaDeadline,
+      ],
     );
 
     return escalatedReview;
@@ -397,7 +433,7 @@ export class ReviewService {
     const expiredRes = await query(
       `SELECT * FROM human_reviews 
        WHERE sla_deadline < NOW() 
-         AND status NOT IN ('completed', 'auto_resolved', 'escalated')`
+         AND status NOT IN ('completed', 'auto_resolved', 'escalated')`,
     );
     const expiredReviews = expiredRes.rows;
 
@@ -410,14 +446,14 @@ export class ReviewService {
              completed_at = NOW(), 
              updated_at = NOW() 
          WHERE id = $1`,
-        [review.id]
+        [review.id],
       );
 
       // Create SLA breach alert
       await query(
         `INSERT INTO alerts (org_id, job_id, result_id, severity, title, summary, notification_sent, notification_channels)
          VALUES ($1, $2, $3, 'high', 'SLA Breach: Auto-Resolved Review', 'A human review task breached its SLA deadline and was automatically resolved with the original AI verdict.', false, '{}')`,
-        [review.org_id, review.job_id, review.result_id]
+        [review.org_id, review.job_id, review.result_id],
       );
     }
 
@@ -435,7 +471,7 @@ export class ReviewService {
       assignedTo?: string;
       page: number;
       limit: number;
-    }
+    },
   ): Promise<{ reviews: HumanReview[]; total: number }> {
     const { status, priority, assignedTo, page = 1, limit = 10 } = filters;
     const offset = (page - 1) * limit;
@@ -462,11 +498,14 @@ export class ReviewService {
       paramIdx++;
     }
 
-    const totalRes = await query(`
+    const totalRes = await query(
+      `
       SELECT COUNT(*)::int as count 
       FROM human_reviews hr
       ${baseFilter}
-    `, params);
+    `,
+      params,
+    );
     const total = totalRes.rows[0].count;
 
     const queryStr = `
@@ -501,7 +540,11 @@ export class ReviewService {
   /**
    * Retrieve reviews assigned to a particular analyst.
    */
-  static async getMyReviews(analystUserId: string, page: number, limit: number): Promise<HumanReview[]> {
+  static async getMyReviews(
+    analystUserId: string,
+    page: number,
+    limit: number,
+  ): Promise<HumanReview[]> {
     const offset = (page - 1) * limit;
 
     const reviewsRes = await query(
@@ -522,7 +565,7 @@ export class ReviewService {
          END ASC, 
          hr.sla_deadline ASC
        LIMIT $2 OFFSET $3`,
-      [analystUserId, limit, offset]
+      [analystUserId, limit, offset],
     );
 
     return reviewsRes.rows;
@@ -532,18 +575,24 @@ export class ReviewService {
    * Retrieve statistics about the human review queue.
    */
   static async getReviewStats(): Promise<ReviewQueueStats> {
-    const pendingRes = await query(`SELECT COUNT(*)::int as count FROM human_reviews WHERE status = 'pending'`);
-    const assignedRes = await query(`SELECT COUNT(*)::int as count FROM human_reviews WHERE status = 'assigned'`);
-    const inReviewRes = await query(`SELECT COUNT(*)::int as count FROM human_reviews WHERE status = 'in_review'`);
+    const pendingRes = await query(
+      `SELECT COUNT(*)::int as count FROM human_reviews WHERE status = 'pending'`,
+    );
+    const assignedRes = await query(
+      `SELECT COUNT(*)::int as count FROM human_reviews WHERE status = 'assigned'`,
+    );
+    const inReviewRes = await query(
+      `SELECT COUNT(*)::int as count FROM human_reviews WHERE status = 'in_review'`,
+    );
 
     const overdueRes = await query(
-      `SELECT COUNT(*)::int as count FROM human_reviews WHERE sla_deadline < NOW() AND status NOT IN ('completed', 'auto_resolved', 'escalated')`
+      `SELECT COUNT(*)::int as count FROM human_reviews WHERE sla_deadline < NOW() AND status NOT IN ('completed', 'auto_resolved', 'escalated')`,
     );
 
     const avgRes = await query(
       `SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (completed_at - created_at))/3600), 0)::float as avg_hours 
        FROM human_reviews 
-       WHERE status = 'completed' AND completed_at IS NOT NULL`
+       WHERE status = 'completed' AND completed_at IS NOT NULL`,
     );
 
     const analystsRes = await query(
@@ -551,7 +600,7 @@ export class ReviewService {
        FROM users u
        LEFT JOIN human_reviews hr ON u.id = hr.assigned_to AND hr.status IN ('assigned', 'in_review')
        WHERE u.role IN ('analyst', 'admin')
-       GROUP BY u.id, u.email`
+       GROUP BY u.id, u.email`,
     );
 
     const workloads: ReviewerWorkload[] = analystsRes.rows.map((row: any) => ({
@@ -582,7 +631,7 @@ export class ReviewService {
        JOIN detection_jobs dj ON hr.job_id = dj.id
        JOIN detection_results dr ON hr.result_id = dr.id
        WHERE hr.id = $1`,
-      [reviewId]
+      [reviewId],
     );
 
     const review = reviewRes.rows[0];

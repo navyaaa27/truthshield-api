@@ -15,7 +15,7 @@ jest.mock('axios', () => {
   return {
     default: {
       get: jest.fn().mockImplementation((url: any) => {
-        if (url && url.includes('reuters') || url.includes('apnews') || url.includes('bbc')) {
+        if ((url && url.includes('reuters')) || url.includes('apnews') || url.includes('bbc')) {
           // Return a mock RSS feed
           return Promise.resolve({
             data: `<?xml version="1.0" encoding="UTF-8" ?>
@@ -26,7 +26,7 @@ jest.mock('axios', () => {
                 <link>https://apnews.com/quantum</link>
               </item>
             </channel>
-            </rss>`
+            </rss>`,
           });
         }
         return Promise.resolve({ data: {} });
@@ -43,19 +43,19 @@ jest.mock('axios', () => {
                       text: 'Quantum computer reaches 1000 logical qubits.',
                       claimType: 'factual',
                       confidence: 0.95,
-                      sentences: ['Quantum computers have reached 1000 qubits today.']
-                    }
+                      sentences: ['Quantum computers have reached 1000 qubits today.'],
+                    },
                   ],
-                  articleSummary: 'An article about recent quantum computing breakthroughs.'
-                })
-              }
-            ]
-          }
+                  articleSummary: 'An article about recent quantum computing breakthroughs.',
+                }),
+              },
+            ],
+          },
         });
-      })
+      }),
     },
     get: jest.fn().mockImplementation(() => Promise.resolve({ data: {} })),
-    post: jest.fn().mockImplementation(() => Promise.resolve({ data: {} }))
+    post: jest.fn().mockImplementation(() => Promise.resolve({ data: {} })),
   };
 });
 
@@ -96,16 +96,22 @@ describe('Fake News & Misinformation Detection Module Tests', () => {
 
     it('validateUrlSafety rejects known cloud metadata and loopback hostnames', async () => {
       await expect(validateUrlSafety('https://localhost')).rejects.toThrow(ValidationError);
-      await expect(validateUrlSafety('https://metadata.google.internal')).rejects.toThrow(ValidationError);
+      await expect(validateUrlSafety('https://metadata.google.internal')).rejects.toThrow(
+        ValidationError,
+      );
       await expect(validateUrlSafety('https://169.254.169.254')).rejects.toThrow(ValidationError);
     });
 
     it('ArticleScraper rejects insecure URLs', async () => {
-      await expect(scraper.scrapeUrl('http://unreliable-source.com')).rejects.toThrow(ValidationError);
+      await expect(scraper.scrapeUrl('http://unreliable-source.com')).rejects.toThrow(
+        ValidationError,
+      );
     });
 
     it('ArticleScraper rejects AWS metadata endpoint', async () => {
-      await expect(scraper.scrapeUrl('https://169.254.169.254/latest/meta-data/')).rejects.toThrow(ValidationError);
+      await expect(scraper.scrapeUrl('https://169.254.169.254/latest/meta-data/')).rejects.toThrow(
+        ValidationError,
+      );
     });
   });
 
@@ -131,8 +137,8 @@ describe('Fake News & Misinformation Detection Module Tests', () => {
   describe('Claude Failure Tolerance & Recovery', () => {
     it('ClaimExtractor handles Claude API failure gracefully and returns empty claims', async () => {
       // Mock axios.post to simulate Anthropic API failure
-      (axios.post as any).mockImplementationOnce(() => 
-        Promise.reject(new Error('Anthropic API limit reached'))
+      (axios.post as any).mockImplementationOnce(() =>
+        Promise.reject(new Error('Anthropic API limit reached')),
       );
 
       const extraction = await extractor.extractClaims(
@@ -140,7 +146,7 @@ describe('Fake News & Misinformation Detection Module Tests', () => {
         'https://reuters.com/article-1',
         'Title',
         'Author',
-        '2026-05-24'
+        '2026-05-24',
       );
 
       expect(extraction).toBeDefined();
@@ -152,8 +158,8 @@ describe('Fake News & Misinformation Detection Module Tests', () => {
   describe('FactChecker Robustness & Performance Concurrency', () => {
     it('FactChecker handles Google API failures gracefully', async () => {
       // Mock axios.get to fail
-      (axios.get as any).mockImplementationOnce(() => 
-        Promise.reject(new Error('Google factcheck service unavailable'))
+      (axios.get as any).mockImplementationOnce(() =>
+        Promise.reject(new Error('Google factcheck service unavailable')),
       );
 
       const result = await (checker as any).checkGoogleFactCheck('Factual claim to check');
@@ -171,7 +177,7 @@ describe('Fake News & Misinformation Detection Module Tests', () => {
           maxActiveCalls = activeCalls;
         }
         // Artificial processing duration
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
         activeCalls--;
         return {
           claimId: 'c1',
@@ -179,7 +185,7 @@ describe('Fake News & Misinformation Detection Module Tests', () => {
           googleFactChecks: [],
           claudeVerdict: { verdict: 'uncertain', confidence: 0.5, reasoning: 'mock' },
           sourceCorroboration: { sourcesChecked: [], corroboratingCount: 0, sources: [] },
-          finalVeracity: 50
+          finalVeracity: 50,
         };
       });
 
@@ -188,7 +194,7 @@ describe('Fake News & Misinformation Detection Module Tests', () => {
         text: `Claim number ${idx}`,
         claimType: 'factual' as const,
         confidence: 0.9,
-        sentences: []
+        sentences: [],
       }));
 
       await checker.checkClaims(mockClaims);
@@ -216,22 +222,22 @@ describe('Fake News & Misinformation Detection Module Tests', () => {
                 text: JSON.stringify({
                   verdict: 'false',
                   confidence: 0.95,
-                  reasoning: 'The claim is completely contradicted by factual evidence.'
-                })
-              }
-            ]
-          }
+                  reasoning: 'The claim is completely contradicted by factual evidence.',
+                }),
+              },
+            ],
+          },
         });
       });
 
       // Override the domain to represent a known misinfo outlet
       const analysisResult = await analyzer.analyze(
         { rawText: 'Unverified medical assertions and extreme headlines.' },
-        'article'
+        'article',
       );
 
       // Force mock score adjustment to emulate known misinfo domain penalty
-      (analysisResult as any).score = 85; 
+      (analysisResult as any).score = 85;
       (analysisResult as any).verdict = 'manipulated';
 
       expect(analysisResult.verdict).toBe('manipulated');

@@ -87,7 +87,10 @@ jest.mock('../src/shared/database/pool.js', () => {
       }
 
       // 4. COUNT of unacknowledged alerts
-      if (sql.includes('count(*)::int as count from alerts') && sql.includes('acknowledged_at is null')) {
+      if (
+        sql.includes('count(*)::int as count from alerts') &&
+        sql.includes('acknowledged_at is null')
+      ) {
         const orgId = p[0];
         const count = mockAlerts.filter((a) => a.org_id === orgId && !a.acknowledged_at).length;
         return Promise.resolve({ rows: [{ count }], rowCount: 1 });
@@ -113,10 +116,7 @@ jest.mock('../src/shared/database/pool.js', () => {
       }
 
       // 6. SELECT paginated alerts
-      if (
-        sql.includes('select * from alerts') || 
-        sql.includes('select a.*')
-      ) {
+      if (sql.includes('select * from alerts') || sql.includes('select a.*')) {
         const orgId = p[0];
         let filtered = mockAlerts.filter((a) => a.org_id === orgId);
 
@@ -132,8 +132,10 @@ jest.mock('../src/shared/database/pool.js', () => {
         }
 
         // Sort DESC
-        const sorted = [...filtered].sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
-        
+        const sorted = [...filtered].sort(
+          (a, b) => b.created_at.getTime() - a.created_at.getTime(),
+        );
+
         // Grab limit and offset
         const limit = p[p.length - 2] || 10;
         const offset = p[p.length - 1] || 0;
@@ -242,7 +244,9 @@ jest.mock('../src/shared/redis/index.js', () => {
 
 jest.mock('../src/shared/redis/redis.client.js', () => ({
   redisClient: {
-    get: jest.fn().mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
+    get: jest
+      .fn()
+      .mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
     setex: jest.fn().mockImplementation(((key: any, _ttl: any, val: any) => {
       mockRedisStore[key] = val;
       return Promise.resolve('OK');
@@ -260,10 +264,14 @@ jest.mock('../src/shared/redis/redis.client.js', () => ({
         return Promise.resolve('fake_sha_hash');
       }
       if (cmd === 'evalsha' || cmd === 'eval') {
-        const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+        const key =
+          args.find(
+            (arg) =>
+              typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:')),
+          ) || 'unknown_key';
         const val = parseInt(mockRedisStore[key] || '0', 10) + 1;
         mockRedisStore[key] = val.toString();
-        return Promise.resolve([val, 60]); 
+        return Promise.resolve([val, 60]);
       }
       return Promise.resolve();
     }) as any),
@@ -286,9 +294,17 @@ describe('Alert Generation & Notification Service Suite', () => {
   const userIdB = 'user-uuid-b';
 
   // JWT auth tokens
-  const adminTokenA = jwt.sign({ userId: userIdA, orgId: orgIdA, role: 'admin' }, env.JWT_SECRET, { expiresIn: '15m' });
-  const analystTokenA = jwt.sign({ userId: userIdA, orgId: orgIdA, role: 'analyst' }, env.JWT_SECRET, { expiresIn: '15m' });
-  const userTokenA = jwt.sign({ userId: userIdA, orgId: orgIdA, role: 'user' }, env.JWT_SECRET, { expiresIn: '15m' });
+  const adminTokenA = jwt.sign({ userId: userIdA, orgId: orgIdA, role: 'admin' }, env.JWT_SECRET, {
+    expiresIn: '15m',
+  });
+  const analystTokenA = jwt.sign(
+    { userId: userIdA, orgId: orgIdA, role: 'analyst' },
+    env.JWT_SECRET,
+    { expiresIn: '15m' },
+  );
+  const userTokenA = jwt.sign({ userId: userIdA, orgId: orgIdA, role: 'user' }, env.JWT_SECRET, {
+    expiresIn: '15m',
+  });
 
   beforeEach(() => {
     mockAlerts = [];
@@ -328,10 +344,38 @@ describe('Alert Generation & Notification Service Suite', () => {
     it('generateAlerts creates correct severity for each score range', async () => {
       // Setup detection results covering all score ranges
       mockDetectionResults = [
-        { id: 'res-1', job_id: jobId, org_id: orgIdA, module: 'deepfake', score: 30, verdict: 'suspicious' }, // Low (25-50)
-        { id: 'res-2', job_id: jobId, org_id: orgIdA, module: 'fake_news', score: 60, verdict: 'suspicious' }, // Medium (51-75)
-        { id: 'res-3', job_id: jobId, org_id: orgIdA, module: 'stolen_content', score: 80, verdict: 'manipulated' }, // High (76-90)
-        { id: 'res-4', job_id: jobId, org_id: orgIdA, module: 'metadata_tampering', score: 95, verdict: 'manipulated' }, // Critical (91-100)
+        {
+          id: 'res-1',
+          job_id: jobId,
+          org_id: orgIdA,
+          module: 'deepfake',
+          score: 30,
+          verdict: 'suspicious',
+        }, // Low (25-50)
+        {
+          id: 'res-2',
+          job_id: jobId,
+          org_id: orgIdA,
+          module: 'fake_news',
+          score: 60,
+          verdict: 'suspicious',
+        }, // Medium (51-75)
+        {
+          id: 'res-3',
+          job_id: jobId,
+          org_id: orgIdA,
+          module: 'stolen_content',
+          score: 80,
+          verdict: 'manipulated',
+        }, // High (76-90)
+        {
+          id: 'res-4',
+          job_id: jobId,
+          org_id: orgIdA,
+          module: 'metadata_tampering',
+          score: 95,
+          verdict: 'manipulated',
+        }, // Critical (91-100)
       ];
 
       const alerts = await AlertService.generateAlerts(jobId, orgIdA);
@@ -345,13 +389,29 @@ describe('Alert Generation & Notification Service Suite', () => {
       // Check human-readable text generation
       const deepfakeAlert = alerts.find((a) => a.result_id === 'res-1');
       expect(deepfakeAlert?.title).toBe('Potential deepfake detected in uploaded media');
-      expect(deepfakeAlert?.summary).toContain('30% probability of face or digital voice manipulation');
+      expect(deepfakeAlert?.summary).toContain(
+        '30% probability of face or digital voice manipulation',
+      );
     });
 
     it('generateAlerts skips results with score < 25', async () => {
       mockDetectionResults = [
-        { id: 'res-1', job_id: jobId, org_id: orgIdA, module: 'deepfake', score: 15, verdict: 'clean' },
-        { id: 'res-2', job_id: jobId, org_id: orgIdA, module: 'metadata_tampering', score: 24, verdict: 'clean' },
+        {
+          id: 'res-1',
+          job_id: jobId,
+          org_id: orgIdA,
+          module: 'deepfake',
+          score: 15,
+          verdict: 'clean',
+        },
+        {
+          id: 'res-2',
+          job_id: jobId,
+          org_id: orgIdA,
+          module: 'metadata_tampering',
+          score: 24,
+          verdict: 'clean',
+        },
       ];
 
       const alerts = await AlertService.generateAlerts(jobId, orgIdA);
@@ -362,9 +422,27 @@ describe('Alert Generation & Notification Service Suite', () => {
   describe('Organization Isolation & Security Protections', () => {
     it('getAlerts enforces org isolation and lists alerts only for the target org', async () => {
       mockAlerts = [
-        { id: 'alert-1', org_id: orgIdA, severity: 'low', title: 'Alert A1', created_at: new Date() },
-        { id: 'alert-2', org_id: orgIdA, severity: 'medium', title: 'Alert A2', created_at: new Date() },
-        { id: 'alert-3', org_id: orgIdB, severity: 'critical', title: 'Alert B1', created_at: new Date() },
+        {
+          id: 'alert-1',
+          org_id: orgIdA,
+          severity: 'low',
+          title: 'Alert A1',
+          created_at: new Date(),
+        },
+        {
+          id: 'alert-2',
+          org_id: orgIdA,
+          severity: 'medium',
+          title: 'Alert A2',
+          created_at: new Date(),
+        },
+        {
+          id: 'alert-3',
+          org_id: orgIdB,
+          severity: 'critical',
+          title: 'Alert B1',
+          created_at: new Date(),
+        },
       ];
 
       const resA = await AlertService.getAlerts(orgIdA, { page: 1, limit: 10 });
@@ -379,12 +457,18 @@ describe('Alert Generation & Notification Service Suite', () => {
 
     it('acknowledgeAlert by different org throws ForbiddenError', async () => {
       mockAlerts = [
-        { id: 'alert-1', org_id: orgIdA, severity: 'medium', title: 'Alert A1', acknowledged_at: null },
+        {
+          id: 'alert-1',
+          org_id: orgIdA,
+          severity: 'medium',
+          title: 'Alert A1',
+          acknowledged_at: null,
+        },
       ];
 
-      await expect(
-        AlertService.acknowledgeAlert('alert-1', userIdB, orgIdB)
-      ).rejects.toThrow('You do not have permission to access this alert');
+      await expect(AlertService.acknowledgeAlert('alert-1', userIdB, orgIdB)).rejects.toThrow(
+        'You do not have permission to access this alert',
+      );
     });
   });
 
@@ -416,7 +500,7 @@ describe('Alert Generation & Notification Service Suite', () => {
 
       // Executing must NOT throw
       await expect(
-        NotificationService.sendAlertNotifications(alert, mockOrganizations[0])
+        NotificationService.sendAlertNotifications(alert, mockOrganizations[0]),
       ).resolves.not.toThrow();
 
       // Verify that notification_channels contains 'slack' but NOT 'email' in the database
@@ -452,7 +536,7 @@ describe('Alert Generation & Notification Service Suite', () => {
       slackFailFlag = true;
 
       await expect(
-        NotificationService.sendAlertNotifications(alert, mockOrganizations[0])
+        NotificationService.sendAlertNotifications(alert, mockOrganizations[0]),
       ).resolves.not.toThrow();
 
       const dbAlert = mockAlerts.find((a) => a.id === alert.id);
@@ -487,7 +571,7 @@ describe('Alert Generation & Notification Service Suite', () => {
       slackFailFlag = true;
 
       await expect(
-        NotificationService.sendAlertNotifications(alert, mockOrganizations[0])
+        NotificationService.sendAlertNotifications(alert, mockOrganizations[0]),
       ).resolves.not.toThrow();
 
       const dbAlert = mockAlerts.find((a) => a.id === alert.id);
@@ -499,8 +583,22 @@ describe('Alert Generation & Notification Service Suite', () => {
   describe('Express Router Alert Endpoints Integration Checks', () => {
     beforeEach(() => {
       mockAlerts = [
-        { id: 'alert-a1', org_id: orgIdA, severity: 'low', title: 'Alert Low', acknowledged_at: null, created_at: new Date(Date.now() - 1000) },
-        { id: 'alert-a2', org_id: orgIdA, severity: 'high', title: 'Alert High', acknowledged_at: null, created_at: new Date() },
+        {
+          id: 'alert-a1',
+          org_id: orgIdA,
+          severity: 'low',
+          title: 'Alert Low',
+          acknowledged_at: null,
+          created_at: new Date(Date.now() - 1000),
+        },
+        {
+          id: 'alert-a2',
+          org_id: orgIdA,
+          severity: 'high',
+          title: 'Alert High',
+          acknowledged_at: null,
+          created_at: new Date(),
+        },
       ];
     });
 

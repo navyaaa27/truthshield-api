@@ -53,20 +53,25 @@ describe('Database Scaling & Hardening Performance Tests', () => {
 
     // Spy on underlying pool queries
     readQuerySpy = jest.spyOn(readPool, 'query').mockImplementation(() =>
-      Promise.resolve({ rows: [{ id: 'res-1', score: 85, verdict: 'manipulated' }], rowCount: 1 } as any)
+      Promise.resolve({
+        rows: [{ id: 'res-1', score: 85, verdict: 'manipulated' }],
+        rowCount: 1,
+      } as any),
     );
-    writeQuerySpy = jest.spyOn(writePool, 'query').mockImplementation(() =>
-      Promise.resolve({ rows: [{ id: 'job-1', status: 'pending' }], rowCount: 1 } as any)
-    );
+    writeQuerySpy = jest
+      .spyOn(writePool, 'query')
+      .mockImplementation(() =>
+        Promise.resolve({ rows: [{ id: 'job-1', status: 'pending' }], rowCount: 1 } as any),
+      );
 
     // Spy on writePool.connect for transactions
     const mockClient = {
       query: jest.fn().mockImplementation(() => Promise.resolve({ rows: [], rowCount: 0 })),
       release: jest.fn(),
     };
-    writeConnectSpy = jest.spyOn(writePool, 'connect').mockImplementation(() =>
-      Promise.resolve(mockClient as any)
-    );
+    writeConnectSpy = jest
+      .spyOn(writePool, 'connect')
+      .mockImplementation(() => Promise.resolve(mockClient as any));
   });
 
   afterEach(() => {
@@ -92,7 +97,10 @@ describe('Database Scaling & Hardening Performance Tests', () => {
   });
 
   it('should route INSERT/UPDATE/DELETE queries to writePool', async () => {
-    const res = await query('INSERT INTO detection_jobs (org_id, status) VALUES ($1, $2)', ['org-1', 'pending']);
+    const res = await query('INSERT INTO detection_jobs (org_id, status) VALUES ($1, $2)', [
+      'org-1',
+      'pending',
+    ]);
 
     expect(writeQuerySpy).toHaveBeenCalled();
     expect(readQuerySpy).not.toHaveBeenCalled();
@@ -164,13 +172,13 @@ describe('Database Scaling & Hardening Performance Tests', () => {
 
     // Assert only one query was made with the lateral join
     const lateralJoinCalls = readQuerySpy.mock.calls.filter((call: any) =>
-      call[0].toLowerCase().includes('latest_result')
+      call[0].toLowerCase().includes('latest_result'),
     );
     expect(lateralJoinCalls.length).toBe(1);
 
     // Assert total count query was made
     const countCalls = readQuerySpy.mock.calls.filter((call: any) =>
-      call[0].toLowerCase().includes('count(*)')
+      call[0].toLowerCase().includes('count(*)'),
     );
     expect(countCalls.length).toBe(1);
 
@@ -180,7 +188,11 @@ describe('Database Scaling & Hardening Performance Tests', () => {
   it('should retrieve alerts feed and results using LEFT JOIN (getAlerts makes exactly 1 paginated alerts list DB query)', async () => {
     // Mock read query depending on text
     readQuerySpy.mockImplementation((sql: string) => {
-      if (sql.includes('COUNT(*)') && sql.includes('acknowledged_at IS NULL') && !sql.includes('alerts a')) {
+      if (
+        sql.includes('COUNT(*)') &&
+        sql.includes('acknowledged_at IS NULL') &&
+        !sql.includes('alerts a')
+      ) {
         return Promise.resolve({ rows: [{ count: 3 }], rowCount: 1 } as any); // unreadCount
       }
       if (sql.includes('COUNT(*)')) {
@@ -193,13 +205,13 @@ describe('Database Scaling & Hardening Performance Tests', () => {
 
     // Assert only one query was made with the LEFT JOIN
     const leftJoinCalls = readQuerySpy.mock.calls.filter((call: any) =>
-      call[0].toLowerCase().includes('left join detection_results')
+      call[0].toLowerCase().includes('left join detection_results'),
     );
     expect(leftJoinCalls.length).toBe(1);
 
     // Assert count queries were made
     const countCalls = readQuerySpy.mock.calls.filter((call: any) =>
-      call[0].toLowerCase().includes('count(*)')
+      call[0].toLowerCase().includes('count(*)'),
     );
     expect(countCalls.length).toBe(2);
 

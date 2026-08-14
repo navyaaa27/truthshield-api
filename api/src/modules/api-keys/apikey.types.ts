@@ -10,7 +10,7 @@ export const SCOPES = {
   WEBHOOKS_MANAGE: 'webhooks:manage',
 } as const;
 
-export type ApiKeyScope = typeof SCOPES[keyof typeof SCOPES];
+export type ApiKeyScope = (typeof SCOPES)[keyof typeof SCOPES];
 
 export interface ApiKey {
   id: string;

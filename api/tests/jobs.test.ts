@@ -185,7 +185,7 @@ jest.mock('../src/shared/redis/redis.client.js', () => ({
         return Promise.resolve('fake_sha_hash');
       }
       if (cmd === 'evalsha' || cmd === 'eval') {
-        return Promise.resolve([1, 60]); 
+        return Promise.resolve([1, 60]);
       }
       return Promise.resolve();
     }) as any),
@@ -202,17 +202,13 @@ describe('Detection Job Management & Scopes Suite', () => {
   const orgId = 'org-uuid-test';
   const userId = 'user-uuid-123';
 
-  const accessToken = jwt.sign(
-    { userId, orgId, role: 'admin' },
-    env.JWT_SECRET,
-    { expiresIn: '15m' }
-  );
+  const accessToken = jwt.sign({ userId, orgId, role: 'admin' }, env.JWT_SECRET, {
+    expiresIn: '15m',
+  });
 
-  const analystToken = jwt.sign(
-    { userId, orgId, role: 'analyst' },
-    env.JWT_SECRET,
-    { expiresIn: '15m' }
-  );
+  const analystToken = jwt.sign({ userId, orgId, role: 'analyst' }, env.JWT_SECRET, {
+    expiresIn: '15m',
+  });
 
   beforeEach(() => {
     mockJobs = [];
@@ -242,7 +238,7 @@ describe('Detection Job Management & Scopes Suite', () => {
           contentType: 'article',
           detectionModules: ['deepfake'],
           sourceUrl: 'https://truthshield.ai/news/article-1',
-        })
+        }),
       ).rejects.toThrow("Module 'deepfake' is only compatible with 'video' or 'image'");
     });
 
@@ -295,9 +291,9 @@ describe('Detection Job Management & Scopes Suite', () => {
       await JobModel.updateJobStatus(job.id, 'processing');
       await JobModel.updateJobStatus(job.id, 'completed');
 
-      await expect(
-        JobModel.updateJobStatus(job.id, 'pending')
-      ).rejects.toThrow("Invalid job status transition from 'completed' to 'pending'");
+      await expect(JobModel.updateJobStatus(job.id, 'pending')).rejects.toThrow(
+        "Invalid job status transition from 'completed' to 'pending'",
+      );
     });
 
     it('should correctly query and paginate organization jobs with page and totals', async () => {
@@ -386,7 +382,9 @@ describe('Detection Job Management & Scopes Suite', () => {
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(failedCancelRes.status).toBe(400);
-      expect(failedCancelRes.body.error.message).toContain('Cannot cancel a job that is already in');
+      expect(failedCancelRes.body.error.message).toContain(
+        'Cannot cancel a job that is already in',
+      );
     });
 
     it('DELETE /api/v1/jobs/:id should support soft deletion by authorized analysts and admins', async () => {

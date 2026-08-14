@@ -2,11 +2,7 @@ import { detectionQueue, alertQueue } from '../queue/queues.js';
 import { updatePoolMetrics } from '../database/pool.js';
 import { isRedisHealthy } from '../redis/redis.client.js';
 import { logger } from '../../utils/logger.js';
-import {
-  detectionQueueDepth,
-  activeDetectionWorkers,
-  redisConnected,
-} from './metrics.service.js';
+import { detectionQueueDepth, activeDetectionWorkers, redisConnected } from './metrics.service.js';
 
 export class QueueMonitor {
   private intervalId?: NodeJS.Timeout;
@@ -14,7 +10,7 @@ export class QueueMonitor {
 
   start(): void {
     logger.info('Queue & Resource Monitor started.');
-    
+
     // Poll queue sizes and redis status on 30 second interval
     this.intervalId = setInterval(async () => {
       try {
@@ -67,7 +63,9 @@ export class QueueMonitor {
 
       // Warning thresholds
       if (totalDepth > 5000) {
-        logger.error(`🚨 CRITICAL: High Backpressure detected! Queue depth is ${totalDepth}. Scale up needed immediately.`);
+        logger.error(
+          `🚨 CRITICAL: High Backpressure detected! Queue depth is ${totalDepth}. Scale up needed immediately.`,
+        );
       } else if (totalDepth > 1000) {
         logger.warn(`⚠️ WARNING: Backpressure detected! Queue depth is ${totalDepth}.`);
       }

@@ -14,7 +14,9 @@ jest.mock('fs/promises', () => {
 
 jest.mock('../../src/utils/tempFiles.js', () => {
   return {
-    createTempDir: jest.fn().mockImplementation(() => Promise.resolve('/tmp/mock-deepfake-analysis')),
+    createTempDir: jest
+      .fn()
+      .mockImplementation(() => Promise.resolve('/tmp/mock-deepfake-analysis')),
     cleanupTempDir: jest.fn().mockImplementation(() => Promise.resolve()),
   };
 });
@@ -30,18 +32,20 @@ jest.mock('../../src/shared/redis/index.js', () => {
 
 jest.mock('../../src/shared/database/pool.js', () => {
   return {
-    query: jest.fn().mockImplementation(() =>
-      Promise.resolve({ rows: [{ id: 'result-1', score: 0 }], rowCount: 1 })
-    ),
+    query: jest
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve({ rows: [{ id: 'result-1', score: 0 }], rowCount: 1 }),
+      ),
   };
 });
 
 jest.mock('../../src/shared/storage/s3.service.js', () => {
   return {
     S3Service: {
-      getPresignedDownloadUrl: jest.fn().mockImplementation(() =>
-        Promise.resolve('https://s3.amazonaws.com/mock-download-url')
-      ),
+      getPresignedDownloadUrl: jest
+        .fn()
+        .mockImplementation(() => Promise.resolve('https://s3.amazonaws.com/mock-download-url')),
     },
   };
 });
@@ -102,7 +106,7 @@ jest.mock('axios', () => {
           },
         ],
       },
-    })
+    }),
   );
   return {
     post: mockAxiosPost,
@@ -111,7 +115,12 @@ jest.mock('axios', () => {
 });
 
 // --- Imports Under Test ---
-import { HiveClient, AuthError, RateLimitError, ExternalServiceError } from '../../src/modules/detection/deepfake/hive.client.js';
+import {
+  HiveClient,
+  AuthError,
+  RateLimitError,
+  ExternalServiceError,
+} from '../../src/modules/detection/deepfake/hive.client.js';
 import { RekognitionClient } from '../../src/modules/detection/deepfake/rekognition.client.js';
 import { DeepfakeAnalyzer } from '../../src/modules/detection/deepfake/deepfake.analyzer.js';
 import { FrameExtractor } from '../../src/modules/detection/deepfake/frame.extractor.js';
@@ -136,7 +145,7 @@ describe('Deepfake Detection Module Tests', () => {
             status: 429,
             headers: { 'retry-after': '120' },
           },
-        })
+        }),
       );
 
       await expect(hiveClient.analyzeImage('/fake/image.jpg')).rejects.toThrow(RateLimitError);
@@ -148,7 +157,7 @@ describe('Deepfake Detection Module Tests', () => {
         axiosMock.post.mockImplementationOnce(() =>
           Promise.reject({
             response: { status: 429, headers: { 'retry-after': '30' } },
-          })
+          }),
         );
       }
     });
@@ -158,10 +167,12 @@ describe('Deepfake Detection Module Tests', () => {
       axiosMock.post.mockImplementationOnce(() =>
         Promise.reject({
           response: { status: 503 },
-        })
+        }),
       );
 
-      await expect(hiveClient.analyzeImage('/fake/image.jpg')).rejects.toThrow(ExternalServiceError);
+      await expect(hiveClient.analyzeImage('/fake/image.jpg')).rejects.toThrow(
+        ExternalServiceError,
+      );
     });
 
     it('handles 401 with AuthError', async () => {
@@ -169,7 +180,7 @@ describe('Deepfake Detection Module Tests', () => {
       axiosMock.post.mockImplementationOnce(() =>
         Promise.reject({
           response: { status: 401 },
-        })
+        }),
       );
 
       await expect(hiveClient.analyzeImage('/fake/image.jpg')).rejects.toThrow(AuthError);
@@ -399,9 +410,7 @@ describe('Deepfake Detection Module Tests', () => {
         content_type: 'document',
       };
 
-      await expect(handleDeepfake(mockJob)).rejects.toThrow(
-        /only supports image or video/
-      );
+      await expect(handleDeepfake(mockJob)).rejects.toThrow(/only supports image or video/);
     });
   });
 

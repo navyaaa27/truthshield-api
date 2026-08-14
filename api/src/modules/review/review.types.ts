@@ -1,6 +1,17 @@
-export type ReviewStatus = 'pending' | 'assigned' | 'in_review' | 'completed' | 'escalated' | 'auto_resolved';
+export type ReviewStatus =
+  | 'pending'
+  | 'assigned'
+  | 'in_review'
+  | 'completed'
+  | 'escalated'
+  | 'auto_resolved';
 export type ReviewPriority = 'low' | 'normal' | 'high' | 'urgent';
-export type ReviewerVerdict = 'clean' | 'suspicious' | 'manipulated' | 'requires_escalation' | 'inconclusive';
+export type ReviewerVerdict =
+  | 'clean'
+  | 'suspicious'
+  | 'manipulated'
+  | 'requires_escalation'
+  | 'inconclusive';
 
 export interface HumanReview {
   id: string;

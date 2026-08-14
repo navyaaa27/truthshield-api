@@ -197,9 +197,7 @@ describe('Job Result Aggregator', () => {
     });
 
     it('handles string scores by parsing them', () => {
-      const results = [
-        { module: 'deepfake', score: '72', confidence: '90' },
-      ];
+      const results = [{ module: 'deepfake', score: '72', confidence: '90' }];
 
       const agg = aggregateResults(results);
       expect(agg.overallScore).toBe(72);

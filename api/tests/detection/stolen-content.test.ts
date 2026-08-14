@@ -49,9 +49,9 @@ jest.mock('../../src/shared/database/pool.js', () => {
 jest.mock('../../src/shared/storage/s3.service.js', () => {
   return {
     S3Service: {
-      getPresignedDownloadUrl: jest.fn().mockImplementation(() =>
-        Promise.resolve('https://s3.amazonaws.com/mock-download-url')
-      ),
+      getPresignedDownloadUrl: jest
+        .fn()
+        .mockImplementation(() => Promise.resolve('https://s3.amazonaws.com/mock-download-url')),
     },
   };
 });
@@ -79,20 +79,24 @@ jest.mock('sharp', () => {
 // Mock axios
 jest.mock('axios', () => {
   return {
-    get: jest.fn().mockImplementation(() => Promise.resolve({ data: '<html><body></body></html>' })),
-    post: jest.fn().mockImplementation(() => Promise.resolve({
-      data: {
-        content: [
-          {
-            text: JSON.stringify({
-              subject: 'DMCA Takedown Notice',
-              body: 'Generated DMCA Draft Text Notice',
-              recipientType: 'platform'
-            })
-          }
-        ]
-      }
-    }))
+    get: jest
+      .fn()
+      .mockImplementation(() => Promise.resolve({ data: '<html><body></body></html>' })),
+    post: jest.fn().mockImplementation(() =>
+      Promise.resolve({
+        data: {
+          content: [
+            {
+              text: JSON.stringify({
+                subject: 'DMCA Takedown Notice',
+                body: 'Generated DMCA Draft Text Notice',
+                recipientType: 'platform',
+              }),
+            },
+          ],
+        },
+      }),
+    ),
   };
 });
 
@@ -143,13 +147,28 @@ describe('Stolen Content & DMCA Monitoring Module Tests', () => {
     it('findSimilarInDatabase classifies matchType correctly', async () => {
       mockDbRows = [
         { id: 'asset-1', name: 'Exact Match', phash: '1'.repeat(64), org_id: 'org-123' },
-        { id: 'asset-2', name: 'Near Duplicate', phash: '1'.repeat(60) + '0'.repeat(4), org_id: 'org-123' }, // 4 mismatches = 93.75% -> 94%
-        { id: 'asset-3', name: 'Similar', phash: '1'.repeat(54) + '0'.repeat(10), org_id: 'org-123' }, // 10 mismatches = 84.375% -> 84%
-        { id: 'asset-4', name: 'Derivative', phash: '1'.repeat(42) + '0'.repeat(22), org_id: 'org-123' }, // 22 mismatches = 65.625% -> 66%
+        {
+          id: 'asset-2',
+          name: 'Near Duplicate',
+          phash: '1'.repeat(60) + '0'.repeat(4),
+          org_id: 'org-123',
+        }, // 4 mismatches = 93.75% -> 94%
+        {
+          id: 'asset-3',
+          name: 'Similar',
+          phash: '1'.repeat(54) + '0'.repeat(10),
+          org_id: 'org-123',
+        }, // 10 mismatches = 84.375% -> 84%
+        {
+          id: 'asset-4',
+          name: 'Derivative',
+          phash: '1'.repeat(42) + '0'.repeat(22),
+          org_id: 'org-123',
+        }, // 22 mismatches = 65.625% -> 66%
       ];
 
       const matches = await pHashService.findSimilarInDatabase('org-123', '1'.repeat(64), 60);
-      
+
       expect(matches.length).toBe(4);
       expect(matches[0].matchType).toBe('exact');
       expect(matches[1].matchType).toBe('near_duplicate');
@@ -199,9 +218,11 @@ describe('Stolen Content & DMCA Monitoring Module Tests', () => {
     it('StolenContentAnalyzer cleans up temp files even on error', async () => {
       const { cleanupTempDir } = require('../../src/utils/tempFiles.js') as any;
       cleanupTempDir.mockClear();
-      
+
       // Force fetch download to reject to simulate analysis crash
-      (global.fetch as any).mockImplementationOnce(() => Promise.reject(new Error('S3 Connection Lost')));
+      (global.fetch as any).mockImplementationOnce(() =>
+        Promise.reject(new Error('S3 Connection Lost')),
+      );
 
       const mockJob = {
         id: 'job-123',
@@ -220,7 +241,12 @@ describe('Stolen Content & DMCA Monitoring Module Tests', () => {
       // 1. Setup mock assets in Brand catalog
       // We will pretend the catalog has a registered asset with all '1's
       mockDbRows = [
-        { id: 'asset-registered', name: 'Original Master Copy', phash: '1'.repeat(64), org_id: 'org-123' }
+        {
+          id: 'asset-registered',
+          name: 'Original Master Copy',
+          phash: '1'.repeat(64),
+          org_id: 'org-123',
+        },
       ];
 
       const mockJob = {
@@ -233,7 +259,7 @@ describe('Stolen Content & DMCA Monitoring Module Tests', () => {
       // Scenario A: Input image evaluates to the identical hash (all 1s)
       // We modify our sharp raw pixel buffer so the average comparison results in all 1s
       mockRawBuffer = Buffer.alloc(64, 200); // 200 is always >= average of all 200s (evaluated as true -> 1)
-      
+
       const identicalResult = await analyzer.analyze(mockJob);
       expect(identicalResult.score).toBe(95); // Exact Match found -> Score = 95
       expect(identicalResult.verdict).toBe('stolen');
@@ -246,7 +272,7 @@ describe('Stolen Content & DMCA Monitoring Module Tests', () => {
       const spyCompute = jest.spyOn(PHashService.prototype, 'computeHash').mockResolvedValueOnce({
         hash: '0'.repeat(64), // Completely different hash
         hashType: 'phash',
-        computedAt: new Date().toISOString()
+        computedAt: new Date().toISOString(),
       });
 
       const differentResult = await analyzer.analyze(mockJob);

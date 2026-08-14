@@ -18,7 +18,7 @@ const redisOnline = true;
 
 // --- Mock Redis ---
 jest.mock('../../src/shared/redis/redis.client.js', () => {
-  const getFullKey = (key: string) => key.startsWith('ts:') ? key : `ts:${key}`;
+  const getFullKey = (key: string) => (key.startsWith('ts:') ? key : `ts:${key}`);
   return {
     redisClient: {
       get: jest.fn().mockImplementation(((key: any) => {
@@ -33,7 +33,7 @@ jest.mock('../../src/shared/redis/redis.client.js', () => {
       del: jest.fn().mockImplementation(((key: any) => {
         if (!redisOnline) return Promise.reject(new Error('Redis connection lost'));
         if (Array.isArray(key)) {
-          key.forEach(k => redisStore.delete(getFullKey(k)));
+          key.forEach((k) => redisStore.delete(getFullKey(k)));
         } else {
           redisStore.delete(getFullKey(key));
         }
@@ -69,7 +69,11 @@ jest.mock('../../src/shared/redis/redis.client.js', () => {
           return Promise.resolve('fake_sha_hash');
         }
         if (cmd === 'evalsha' || cmd === 'eval') {
-          const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+          const key =
+            args.find(
+              (arg) =>
+                typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:')),
+            ) || 'unknown_key';
           const fullKey = getFullKey(key);
           const val = parseInt(redisStore.get(fullKey) || '0', 10) + 1;
           redisStore.set(fullKey, val.toString());
@@ -85,7 +89,7 @@ jest.mock('../../src/shared/redis/redis.client.js', () => {
 });
 
 jest.mock('../../src/shared/redis/index.js', () => {
-  const getFullKey = (key: string) => key.startsWith('ts:') ? key : `ts:${key}`;
+  const getFullKey = (key: string) => (key.startsWith('ts:') ? key : `ts:${key}`);
   return {
     checkRedisHealth: jest.fn().mockImplementation(() => Promise.resolve(redisOnline)),
     redis: {
@@ -157,7 +161,7 @@ jest.mock('../../src/shared/database/pool.js', () => {
         Promise.resolve({
           query: jest.fn().mockImplementation(() => Promise.resolve({ rows: [], rowCount: 0 })),
           release: jest.fn(),
-        })
+        }),
       ),
       end: jest.fn().mockImplementation(() => Promise.resolve()),
     },
@@ -346,11 +350,17 @@ jest.mock('../../src/shared/database/pool.js', () => {
     }) as any),
     writePool: {
       query: (jest.fn() as any).mockResolvedValue({ rows: [{ '?column?': 1 }], rowCount: 1 }),
-      totalCount: 5, idleCount: 3, waitingCount: 0, on: jest.fn(),
+      totalCount: 5,
+      idleCount: 3,
+      waitingCount: 0,
+      on: jest.fn(),
     } as any,
     readPool: {
       query: (jest.fn() as any).mockResolvedValue({ rows: [{ '?column?': 1 }], rowCount: 1 }),
-      totalCount: 5, idleCount: 3, waitingCount: 0, on: jest.fn(),
+      totalCount: 5,
+      idleCount: 3,
+      waitingCount: 0,
+      on: jest.fn(),
     } as any,
     getSlowQueriesLastHourCount: (jest.fn() as any).mockReturnValue(0),
     updatePoolMetrics: jest.fn(),
@@ -361,7 +371,9 @@ jest.mock('../../src/shared/database/pool.js', () => {
 jest.mock('../../src/shared/redis/index.js', () => {
   return {
     redis: {
-      get: jest.fn().mockImplementation(((key: any) => Promise.resolve(redisStore.get(key) || null)) as any),
+      get: jest
+        .fn()
+        .mockImplementation(((key: any) => Promise.resolve(redisStore.get(key) || null)) as any),
       set: jest.fn().mockImplementation(((key: any, val: any) => {
         redisStore.set(key, val);
         return Promise.resolve('OK');
@@ -390,7 +402,9 @@ jest.mock('../../src/shared/redis/index.js', () => {
 jest.mock('../../src/shared/redis/redis.client.js', () => ({
   redisClient: {
     get: jest.fn().mockImplementation(((_key: any) => Promise.resolve(null)) as any),
-    setex: jest.fn().mockImplementation(((_key: any, _ttl: any, _val: any) => Promise.resolve('OK')) as any),
+    setex: jest
+      .fn()
+      .mockImplementation(((_key: any, _ttl: any, _val: any) => Promise.resolve('OK')) as any),
     del: jest.fn().mockImplementation(((_key: any) => Promise.resolve(1)) as any),
     keys: jest.fn().mockImplementation((() => Promise.resolve([])) as any),
     incr: jest.fn().mockImplementation((() => Promise.resolve(1)) as any),
@@ -401,10 +415,14 @@ jest.mock('../../src/shared/redis/redis.client.js', () => ({
         return Promise.resolve('fake_sha_hash');
       }
       if (cmd === 'evalsha' || cmd === 'eval') {
-        const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+        const key =
+          args.find(
+            (arg) =>
+              typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:')),
+          ) || 'unknown_key';
         const val = parseInt(redisStore.get(key) || '0', 10) + 1;
         redisStore.set(key, val.toString());
-        return Promise.resolve([val, 60]); 
+        return Promise.resolve([val, 60]);
       }
       return Promise.resolve();
     }) as any),
@@ -428,35 +446,31 @@ describe('TruthShield Phase 1 End-to-End Master Integration Journeys', () => {
   describe('Journey 1 — New Customer Onboarding', () => {
     it('should successfully register, fetch health status, rotate tokens, logout, and prevent expired tokens', async () => {
       // 1. POST /auth/register with valid data -> expect 201, tokens returned, org created
-      const registerRes = await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          email: 'journey1@truthshield.ai',
-          password: 'SecurePassWord123!',
-          orgName: 'Journey One Org',
-        });
+      const registerRes = await request(app).post('/api/v1/auth/register').send({
+        email: 'journey1@truthshield.ai',
+        password: 'SecurePassWord123!',
+        orgName: 'Journey One Org',
+      });
 
       expect(registerRes.status).toBe(201);
       expect(registerRes.body.tokens).toBeDefined();
       expect(registerRes.body.tokens.accessToken).toBeDefined();
       expect(registerRes.body.tokens.refreshToken).toBeDefined();
       expect(registerRes.body.org.name).toBe('Journey One Org');
-      
+
       const { accessToken, refreshToken } = registerRes.body.tokens;
 
       // 2. Use access token to GET /health -> expect 200
       const healthRes = await request(app)
         .get('/health')
         .set('Authorization', `Bearer ${accessToken}`);
-      
+
       expect(healthRes.status).toBe(200);
       expect(healthRes.body.status).toBe('ok');
 
       // 3. Access token expires simulation -> POST /auth/refresh -> expect new token pair
-      const refreshRes = await request(app)
-        .post('/api/v1/auth/refresh')
-        .send({ refreshToken });
-      
+      const refreshRes = await request(app).post('/api/v1/auth/refresh').send({ refreshToken });
+
       expect(refreshRes.status).toBe(200);
       expect(refreshRes.body.accessToken).toBeDefined();
       expect(refreshRes.body.refreshToken).toBeDefined();
@@ -467,14 +481,14 @@ describe('TruthShield Phase 1 End-to-End Master Integration Journeys', () => {
       const logoutRes = await request(app)
         .post('/api/v1/auth/logout')
         .send({ refreshToken: newRefreshToken });
-      
+
       expect(logoutRes.status).toBe(200);
 
       // 5. Try to use old refresh token -> expect 401
       const expiredRefreshRes = await request(app)
         .post('/api/v1/auth/refresh')
         .send({ refreshToken: newRefreshToken });
-      
+
       expect(expiredRefreshRes.status).toBe(401);
     });
   });
@@ -482,13 +496,11 @@ describe('TruthShield Phase 1 End-to-End Master Integration Journeys', () => {
   describe('Journey 2 — MFA Setup & Challenge Logins', () => {
     it('should complete MFA onboarding and log in successfully with challenge transitions', async () => {
       // 1. Register new user
-      const registerRes = await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          email: 'journey2@truthshield.ai',
-          password: 'SecurePassWord123!',
-          orgName: 'Journey Two Org',
-        });
+      const registerRes = await request(app).post('/api/v1/auth/register').send({
+        email: 'journey2@truthshield.ai',
+        password: 'SecurePassWord123!',
+        orgName: 'Journey Two Org',
+      });
       const userUuid = registerRes.body.user.id;
       const accessToken = registerRes.body.tokens.accessToken;
 
@@ -496,7 +508,7 @@ describe('TruthShield Phase 1 End-to-End Master Integration Journeys', () => {
       const setupRes = await request(app)
         .post('/api/v1/auth/mfa/setup')
         .set('Authorization', `Bearer ${accessToken}`);
-      
+
       expect(setupRes.status).toBe(200);
       expect(setupRes.body.secret).toBeDefined();
       expect(setupRes.body.qrCodeDataURL).toContain('data:image/png;base64,');
@@ -510,9 +522,9 @@ describe('TruthShield Phase 1 End-to-End Master Integration Journeys', () => {
         .post('/api/v1/auth/mfa/verify-setup')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({ totpCode });
-      
+
       expect(verifyRes.status).toBe(200);
-      
+
       // Verify in DB state
       const userObj = mockUsers.find((u) => u.id === userUuid);
       expect(userObj.mfa_enabled).toBe(true);
@@ -523,13 +535,11 @@ describe('TruthShield Phase 1 End-to-End Master Integration Journeys', () => {
         .send({ refreshToken: registerRes.body.tokens.refreshToken });
 
       // 5. POST /auth/login -> expect { requiresMFA: true, tempToken }
-      const loginRes = await request(app)
-        .post('/api/v1/auth/login')
-        .send({
-          email: 'journey2@truthshield.ai',
-          password: 'SecurePassWord123!',
-        });
-      
+      const loginRes = await request(app).post('/api/v1/auth/login').send({
+        email: 'journey2@truthshield.ai',
+        password: 'SecurePassWord123!',
+      });
+
       expect(loginRes.status).toBe(200);
       expect(loginRes.body.requiresMFA).toBe(true);
       expect(loginRes.body.tempToken).toBeDefined();
@@ -538,13 +548,11 @@ describe('TruthShield Phase 1 End-to-End Master Integration Journeys', () => {
 
       // 6. POST /auth/mfa/login with valid TOTP -> expect full token pair
       const validCode = authenticator.generate(mfaSecret);
-      const mfaLoginRes = await request(app)
-        .post('/api/v1/auth/mfa/login')
-        .send({
-          tempToken,
-          totpCode: validCode,
-        });
-      
+      const mfaLoginRes = await request(app).post('/api/v1/auth/mfa/login').send({
+        tempToken,
+        totpCode: validCode,
+      });
+
       expect(mfaLoginRes.status).toBe(200);
       expect(mfaLoginRes.body.tokens).toBeDefined();
       expect(mfaLoginRes.body.tokens.accessToken).toBeDefined();
@@ -554,46 +562,42 @@ describe('TruthShield Phase 1 End-to-End Master Integration Journeys', () => {
   describe('Journey 4 — System Audit Trails', () => {
     it('should generate complete, queryable audit events throughout the user lifecycle', async () => {
       // 1. Register a user
-      const registerRes = await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          email: 'audit@truthshield.ai',
-          password: 'SecurePassWord123!',
-          orgName: 'Audit Corp',
-        });
-      
+      const registerRes = await request(app).post('/api/v1/auth/register').send({
+        email: 'audit@truthshield.ai',
+        password: 'SecurePassWord123!',
+        orgName: 'Audit Corp',
+      });
+
       const accessToken = registerRes.body.tokens.accessToken;
 
       // 2. Login as that user
-      const loginRes = await request(app)
-        .post('/api/v1/auth/login')
-        .send({
-          email: 'audit@truthshield.ai',
-          password: 'SecurePassWord123!',
-        });
-      
+      const loginRes = await request(app).post('/api/v1/auth/login').send({
+        email: 'audit@truthshield.ai',
+        password: 'SecurePassWord123!',
+      });
+
       expect(loginRes.status).toBe(200);
 
       // 3. Setup and Enable MFA
       const setupRes = await request(app)
         .post('/api/v1/auth/mfa/setup')
         .set('Authorization', `Bearer ${accessToken}`);
-      
+
       const mfaSecret = setupRes.body.secret;
       const totpCode = authenticator.generate(mfaSecret);
-      
+
       const verifyRes = await request(app)
         .post('/api/v1/auth/mfa/verify-setup')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({ totpCode });
-      
+
       expect(verifyRes.status).toBe(200);
 
       // 4. Query audit_logs table directly -> confirm entries exist for: USER_REGISTERED, USER_LOGIN, MFA_ENABLED
       const auditQuery = await query('SELECT * FROM audit_logs ORDER BY created_at ASC');
-      
+
       expect(auditQuery.rows.length).toBeGreaterThanOrEqual(3);
-      
+
       const actions = auditQuery.rows.map((row: any) => row.action);
       expect(actions).toContain('USER_REGISTERED');
       expect(actions).toContain('USER_LOGIN');
@@ -631,7 +635,7 @@ describe('TruthShield Phase 1 End-to-End Master Integration Journeys', () => {
       const viewerAccessToken = jwt.sign(
         { userId: viewerUser.id, orgId: viewerUser.org_id, role: viewerUser.role },
         env.JWT_SECRET,
-        { expiresIn: '15m' }
+        { expiresIn: '15m' },
       );
 
       // POST /organizations requires super-admin role (not viewer!)
@@ -639,7 +643,7 @@ describe('TruthShield Phase 1 End-to-End Master Integration Journeys', () => {
         .post('/api/v1/organizations')
         .set('Authorization', `Bearer ${viewerAccessToken}`)
         .send({ name: 'New Org', planTier: 'enterprise' });
-      
+
       expect(adminRouteRes.status).toBe(403);
 
       // 3. Exceed login rate limit -> 429
@@ -648,7 +652,7 @@ describe('TruthShield Phase 1 End-to-End Master Integration Journeys', () => {
         rateLimitAttempts.push(
           request(app)
             .post('/api/v1/auth/login')
-            .send({ email: 'rate@truthshield.ai', password: 'IncorrectPassword!' })
+            .send({ email: 'rate@truthshield.ai', password: 'IncorrectPassword!' }),
         );
       }
       const results = await Promise.all(rateLimitAttempts);
@@ -656,31 +660,25 @@ describe('TruthShield Phase 1 End-to-End Master Integration Journeys', () => {
       expect(statuses).toContain(429);
 
       // 4. Register with weak password -> 400 with field-level validation errors
-      const weakRegisterRes = await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          email: 'weakpass@truthshield.ai',
-          password: '123', // weak password
-          orgName: 'Weak Corp',
-        });
+      const weakRegisterRes = await request(app).post('/api/v1/auth/register').send({
+        email: 'weakpass@truthshield.ai',
+        password: '123', // weak password
+        orgName: 'Weak Corp',
+      });
       expect(weakRegisterRes.status).toBe(400);
 
       // 5. Register with duplicate email -> 409
-      await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          email: 'dup@truthshield.ai',
-          password: 'SecurePassWord123!',
-          orgName: 'First Corp',
-        });
-      
-      const dupRegisterRes = await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          email: 'dup@truthshield.ai',
-          password: 'SecurePassWord123!',
-          orgName: 'Second Corp',
-        });
+      await request(app).post('/api/v1/auth/register').send({
+        email: 'dup@truthshield.ai',
+        password: 'SecurePassWord123!',
+        orgName: 'First Corp',
+      });
+
+      const dupRegisterRes = await request(app).post('/api/v1/auth/register').send({
+        email: 'dup@truthshield.ai',
+        password: 'SecurePassWord123!',
+        orgName: 'Second Corp',
+      });
       expect(dupRegisterRes.status).toBe(409);
     });
   });

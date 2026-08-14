@@ -13,19 +13,29 @@ jest.mock('../src/shared/database/index.js', () => ({
   query: (jest.fn() as any).mockResolvedValue({ rows: [], rowCount: 0 }),
 }));
 
-jest.mock('../src/shared/database/pool.js', () => ({
-  query: (jest.fn() as any).mockResolvedValue({ rows: [], rowCount: 0 }),
-  writePool: {
-    query: (jest.fn() as any).mockResolvedValue({ rows: [{ '?column?': 1 }], rowCount: 1 }),
-    totalCount: 5, idleCount: 3, waitingCount: 0, on: jest.fn(),
-  } as any,
-  readPool: {
-    query: (jest.fn() as any).mockResolvedValue({ rows: [{ '?column?': 1 }], rowCount: 1 }),
-    totalCount: 5, idleCount: 3, waitingCount: 0, on: jest.fn(),
-  } as any,
-  getSlowQueriesLastHourCount: (jest.fn() as any).mockReturnValue(0),
-  updatePoolMetrics: jest.fn(),
-} as any));
+jest.mock(
+  '../src/shared/database/pool.js',
+  () =>
+    ({
+      query: (jest.fn() as any).mockResolvedValue({ rows: [], rowCount: 0 }),
+      writePool: {
+        query: (jest.fn() as any).mockResolvedValue({ rows: [{ '?column?': 1 }], rowCount: 1 }),
+        totalCount: 5,
+        idleCount: 3,
+        waitingCount: 0,
+        on: jest.fn(),
+      } as any,
+      readPool: {
+        query: (jest.fn() as any).mockResolvedValue({ rows: [{ '?column?': 1 }], rowCount: 1 }),
+        totalCount: 5,
+        idleCount: 3,
+        waitingCount: 0,
+        on: jest.fn(),
+      } as any,
+      getSlowQueriesLastHourCount: (jest.fn() as any).mockReturnValue(0),
+      updatePoolMetrics: jest.fn(),
+    }) as any,
+);
 
 jest.mock('../src/shared/redis/index.js', () => ({
   redis: {
@@ -38,7 +48,9 @@ jest.mock('../src/shared/redis/index.js', () => ({
 jest.mock('../src/shared/redis/redis.client.js', () => ({
   redisClient: {
     get: jest.fn().mockImplementation(((_key: any) => Promise.resolve(null)) as any),
-    setex: jest.fn().mockImplementation(((_key: any, _ttl: any, _val: any) => Promise.resolve('OK')) as any),
+    setex: jest
+      .fn()
+      .mockImplementation(((_key: any, _ttl: any, _val: any) => Promise.resolve('OK')) as any),
     del: jest.fn().mockImplementation(((_key: any) => Promise.resolve(1)) as any),
     keys: jest.fn().mockImplementation((() => Promise.resolve([])) as any),
     incr: jest.fn().mockImplementation((() => Promise.resolve(1)) as any),
@@ -49,7 +61,7 @@ jest.mock('../src/shared/redis/redis.client.js', () => ({
         return Promise.resolve('fake_sha_hash');
       }
       if (cmd === 'evalsha' || cmd === 'eval') {
-        return Promise.resolve([1, 60]); 
+        return Promise.resolve([1, 60]);
       }
       return Promise.resolve();
     }) as any),

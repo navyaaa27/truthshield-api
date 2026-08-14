@@ -22,9 +22,11 @@ export class AlertWorker extends BaseWorker {
 
     // 1. Generate alerts for the completed detection job results
     const alerts = await AlertService.generateAlerts(jobId, orgId);
-    
+
     if (alerts.length === 0) {
-      logger.info(`[AlertWorker] No alerts generated for Job: ${jobId} (all module scores under 25)`);
+      logger.info(
+        `[AlertWorker] No alerts generated for Job: ${jobId} (all module scores under 25)`,
+      );
       return;
     }
 
@@ -33,7 +35,9 @@ export class AlertWorker extends BaseWorker {
     const org = orgRes.rows[0];
 
     if (!org) {
-      logger.warn(`[AlertWorker] Organization ${orgId} not found, skipping notifications for ${alerts.length} alerts`);
+      logger.warn(
+        `[AlertWorker] Organization ${orgId} not found, skipping notifications for ${alerts.length} alerts`,
+      );
       return;
     }
 
@@ -44,7 +48,9 @@ export class AlertWorker extends BaseWorker {
         logger.info(`[AlertWorker] Dispatched notifications successfully for Alert ${alert.id}`);
       } catch (err: any) {
         // Errors in notification do not fail the overall queue job
-        logger.error(`[AlertWorker] Failed to dispatch notifications for Alert ${alert.id}: ${err.message}`);
+        logger.error(
+          `[AlertWorker] Failed to dispatch notifications for Alert ${alert.id}: ${err.message}`,
+        );
       }
     }
   }

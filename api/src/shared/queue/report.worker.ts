@@ -21,7 +21,9 @@ export class ReportWorker extends BaseWorker {
 
   protected async recordProcessingTime(jobId: string, startTime: number): Promise<void> {
     const duration = Date.now() - startTime;
-    logger.info(`[ReportWorker] Generation completed for Report ID: ${jobId} (Duration: ${duration}ms)`);
+    logger.info(
+      `[ReportWorker] Generation completed for Report ID: ${jobId} (Duration: ${duration}ms)`,
+    );
   }
 
   protected async handleFailure(job: Job, error: Error): Promise<void> {
@@ -32,7 +34,7 @@ export class ReportWorker extends BaseWorker {
         `UPDATE reports 
          SET status = 'failed', error_message = $1 
          WHERE id = $2`,
-        [error.message, reportId]
+        [error.message, reportId],
       );
     }
   }

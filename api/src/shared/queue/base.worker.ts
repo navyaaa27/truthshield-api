@@ -23,7 +23,7 @@ export abstract class BaseWorker {
       {
         connection,
         concurrency,
-      }
+      },
     );
 
     this.worker.on('failed', (job, err) => {
@@ -39,7 +39,7 @@ export abstract class BaseWorker {
   protected async updateJobStatus(
     jobId: string,
     status: string,
-    extras?: { errorMessage?: string; s3Key?: string }
+    extras?: { errorMessage?: string; s3Key?: string },
   ): Promise<void> {
     await JobModel.updateJobStatus(jobId, status, extras);
   }
@@ -62,7 +62,7 @@ export abstract class BaseWorker {
          SET retry_count = retry_count + 1, updated_at = NOW() 
          WHERE id = $1 
          RETURNING retry_count, max_retries, org_id`,
-        [jobId]
+        [jobId],
       );
 
       if (res.rowCount !== null && res.rowCount > 0) {
@@ -80,7 +80,7 @@ export abstract class BaseWorker {
               jobId,
               `Detection job ${jobId} failed after maximum retry threshold (${max_retries} attempts).`,
               JSON.stringify({ error: error.message, stack: error.stack }),
-            ]
+            ],
           );
           logger.info(`Alert generated for failed job ${jobId} under Org: ${org_id}`);
         }
@@ -97,19 +97,19 @@ export abstract class BaseWorker {
     const duration = Date.now() - startTime;
     try {
       // Update detection_results with processing speed metrics
-      await query(
-        `UPDATE detection_results SET processing_time_ms = $1 WHERE job_id = $2`,
-        [duration, jobId]
-      );
+      await query(`UPDATE detection_results SET processing_time_ms = $1 WHERE job_id = $2`, [
+        duration,
+        jobId,
+      ]);
 
       // Merge performance metrics into job source metadata
       await query(
         `UPDATE detection_jobs 
          SET source_metadata = source_metadata || $1::jsonb, updated_at = NOW() 
          WHERE id = $2`,
-        [JSON.stringify({ processingTimeMs: duration }), jobId]
+        [JSON.stringify({ processingTimeMs: duration }), jobId],
       );
-      
+
       logger.info(`Processing time recorded for Job ${jobId}: ${duration}ms`);
     } catch (err: any) {
       logger.error(`Failed to record telemetry processing time for job ${jobId}: ${err.message}`);

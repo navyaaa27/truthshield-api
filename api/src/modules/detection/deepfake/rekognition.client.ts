@@ -30,7 +30,7 @@ export class RekognitionClient {
 
     try {
       const response = await recordExternalApi('AWS_Rekognition', 'detectFaces', () =>
-        this.client.send(command)
+        this.client.send(command),
       );
       return this.mapResponse(response);
     } catch (err: any) {
@@ -57,7 +57,7 @@ export class RekognitionClient {
 
     try {
       const response = await recordExternalApi('AWS_Rekognition', 'detectFacesFromS3', () =>
-        this.client.send(command)
+        this.client.send(command),
       );
       return this.mapResponse(response);
     } catch (err: any) {
@@ -144,7 +144,8 @@ export class RekognitionClient {
         const brightness = quality.Brightness || 0;
         return (sharpness + brightness) / 2;
       });
-      qualityScore = qualityScores.reduce((a: number, b: number) => a + b, 0) / qualityScores.length;
+      qualityScore =
+        qualityScores.reduce((a: number, b: number) => a + b, 0) / qualityScores.length;
     }
 
     return {

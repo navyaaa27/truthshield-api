@@ -13,7 +13,10 @@ const router = Router();
 const validate = (req: Request, _res: Response, next: NextFunction) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    const errorMsg = errors.array().map((err: any) => `${err.param || err.path || 'field'}: ${err.msg}`).join(', ');
+    const errorMsg = errors
+      .array()
+      .map((err: any) => `${err.param || err.path || 'field'}: ${err.msg}`)
+      .join(', ');
     throw new ValidationError(errorMsg);
   }
   next();
@@ -28,21 +31,29 @@ router.post(
   authenticate,
   [
     body('reportType')
-      .notEmpty().withMessage('reportType is required')
+      .notEmpty()
+      .withMessage('reportType is required')
       .isIn(['threat_summary', 'job_detail', 'compliance_audit', 'dmca_bundle'])
       .withMessage('Invalid reportType format'),
     body('dateRange.startDate')
-      .notEmpty().withMessage('dateRange.startDate is required')
-      .isISO8601().withMessage('dateRange.startDate must be a valid ISO8601 date string'),
+      .notEmpty()
+      .withMessage('dateRange.startDate is required')
+      .isISO8601()
+      .withMessage('dateRange.startDate must be a valid ISO8601 date string'),
     body('dateRange.endDate')
-      .notEmpty().withMessage('dateRange.endDate is required')
-      .isISO8601().withMessage('dateRange.endDate must be a valid ISO8601 date string'),
+      .notEmpty()
+      .withMessage('dateRange.endDate is required')
+      .isISO8601()
+      .withMessage('dateRange.endDate must be a valid ISO8601 date string'),
     body('format')
-      .notEmpty().withMessage('format is required')
-      .equals('pdf').withMessage('format must be "pdf"'),
+      .notEmpty()
+      .withMessage('format is required')
+      .equals('pdf')
+      .withMessage('format must be "pdf"'),
     body('includeScreenshots')
       .optional()
-      .isBoolean().withMessage('includeScreenshots must be a boolean value'),
+      .isBoolean()
+      .withMessage('includeScreenshots must be a boolean value'),
   ],
   validate,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -65,14 +76,14 @@ router.post(
       await query(
         `INSERT INTO audit_logs (org_id, user_id, action, resource_type, resource_id) 
          VALUES ($1, $2, $3, $4, $5)`,
-        [orgId, userId, 'REPORT_GENERATION_INITIATED', 'reports', report.id]
+        [orgId, userId, 'REPORT_GENERATION_INITIATED', 'reports', report.id],
       );
 
       res.status(202).json(report);
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 /**
@@ -84,7 +95,10 @@ router.get(
   authenticate,
   [
     queryVal('page').optional().isInt({ min: 1 }).withMessage('page must be a positive integer'),
-    queryVal('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be an integer between 1 and 100'),
+    queryVal('limit')
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage('limit must be an integer between 1 and 100'),
   ],
   validate,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -99,7 +113,7 @@ router.get(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 /**
@@ -121,14 +135,14 @@ router.get(
       await query(
         `INSERT INTO audit_logs (org_id, user_id, action, resource_type, resource_id) 
          VALUES ($1, $2, $3, $4, $5)`,
-        [orgId, userId, 'REPORT_ACCESSED', 'reports', reportId]
+        [orgId, userId, 'REPORT_ACCESSED', 'reports', reportId],
       );
 
       res.status(200).json(report);
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 /**
@@ -145,7 +159,7 @@ router.get(
       const userId = (req as any).user.userId;
 
       const report = await reportService.getReport(reportId, orgId);
-      
+
       if (report.status !== 'ready' || !report.downloadUrl) {
         throw new ValidationError('Report is not ready for download.');
       }
@@ -154,14 +168,14 @@ router.get(
       await query(
         `INSERT INTO audit_logs (org_id, user_id, action, resource_type, resource_id) 
          VALUES ($1, $2, $3, $4, $5)`,
-        [orgId, userId, 'REPORT_DOWNLOADED', 'reports', reportId]
+        [orgId, userId, 'REPORT_DOWNLOADED', 'reports', reportId],
       );
 
       res.redirect(report.downloadUrl);
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 /**
@@ -183,14 +197,14 @@ router.delete(
       await query(
         `INSERT INTO audit_logs (org_id, user_id, action, resource_type, resource_id) 
          VALUES ($1, $2, $3, $4, $5)`,
-        [orgId, userId, 'REPORT_DELETED', 'reports', reportId]
+        [orgId, userId, 'REPORT_DELETED', 'reports', reportId],
       );
 
       res.status(204).end();
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 export default router;

@@ -1,10 +1,5 @@
 import { query } from '../../shared/database/pool.js';
-import {
-  ReportRequest,
-  ReportData,
-  JobWithFullResults,
-  DMCADraft,
-} from './report.types.js';
+import { ReportRequest, ReportData, JobWithFullResults, DMCADraft } from './report.types.js';
 import { format, eachDayOfInterval } from 'date-fns';
 import { TrendDataPoint, ModuleBreakdown } from '../dashboard/dashboard.types.js';
 
@@ -68,13 +63,13 @@ export class ReportDataAssembler {
         `SELECT COUNT(*)::int as count 
          FROM alerts 
          WHERE org_id = $1 AND severity = 'critical' AND acknowledged_at IS NULL AND created_at >= $2 AND created_at <= $3`,
-        [orgId, start, end]
+        [orgId, start, end],
       ),
       query(
         `SELECT COUNT(*)::int as count 
          FROM human_reviews 
          WHERE org_id = $1 AND status IN ('pending', 'assigned', 'in_review') AND created_at >= $2 AND created_at <= $3`,
-        [orgId, start, end]
+        [orgId, start, end],
       ),
       query(
         `SELECT 
@@ -94,7 +89,7 @@ export class ReportDataAssembler {
            AND j.status = 'completed'
          GROUP BY DATE_TRUNC('day', j.created_at)
          ORDER BY date ASC`,
-        [orgId, start, end]
+        [orgId, start, end],
       ),
       query(
         `SELECT 
@@ -111,7 +106,7 @@ export class ReportDataAssembler {
            AND created_at >= $2
            AND created_at <= $3
          GROUP BY module`,
-        [orgId, start, end]
+        [orgId, start, end],
       ),
     ]);
 
@@ -121,7 +116,7 @@ export class ReportDataAssembler {
 
     // 3. Fetch module detection results in parallel for the retrieved jobs
     let fullJobs: JobWithFullResults[] = [];
-    let dmcaDrafts: DMCADraft[] = [];
+    const dmcaDrafts: DMCADraft[] = [];
 
     if (jobsList.length > 0) {
       const retrievedJobIds = jobsList.map((j) => j.job_id);
@@ -138,11 +133,14 @@ export class ReportDataAssembler {
       }
 
       const resultsRes = await query(resultsQuery, resultsParams);
-      const resultsMap = resultsRes.rows.reduce((acc, row) => {
-        if (!acc[row.job_id]) acc[row.job_id] = [];
-        acc[row.job_id].push(row);
-        return acc;
-      }, {} as Record<string, any[]>);
+      const resultsMap = resultsRes.rows.reduce(
+        (acc, row) => {
+          if (!acc[row.job_id]) acc[row.job_id] = [];
+          acc[row.job_id].push(row);
+          return acc;
+        },
+        {} as Record<string, any[]>,
+      );
 
       fullJobs = jobsList.map((j) => {
         const modRes = resultsMap[j.job_id] || [];
@@ -169,14 +167,17 @@ export class ReportDataAssembler {
       resultsRes.rows.forEach((row) => {
         if (row.module === 'stolen_content' && row.result_data) {
           try {
-            const data = typeof row.result_data === 'string' ? JSON.parse(row.result_data) : row.result_data;
+            const data =
+              typeof row.result_data === 'string' ? JSON.parse(row.result_data) : row.result_data;
             if (data.dmcaDraft) {
               dmcaDrafts.push({
                 jobId: row.job_id,
                 infringingUrl: data.dmcaDraft.infringingUrl || '',
                 matchType: data.dmcaDraft.matchSimilarity >= 95 ? 'exact' : 'near_duplicate',
                 similarityScore: data.dmcaDraft.matchSimilarity || 0,
-                originalAssetDescription: data.dmcaDraft.originalAssetDescription || 'Proprietary digital media asset registered on TruthShield',
+                originalAssetDescription:
+                  data.dmcaDraft.originalAssetDescription ||
+                  'Proprietary digital media asset registered on TruthShield',
                 dmcaNoticeText: data.dmcaDraft.dmcaNoticeText || '',
               });
             }

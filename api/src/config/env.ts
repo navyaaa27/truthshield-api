@@ -24,7 +24,9 @@ const envSchema = z.object({
   QUEUE_CONCURRENCY: z.coerce.number().default(5),
   QUEUE_MAX_RETRIES: z.coerce.number().default(3),
   QUEUE_RETRY_DELAY_MS: z.coerce.number().default(5000),
-  BULL_BOARD_ENABLED: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(true),
+  BULL_BOARD_ENABLED: z
+    .preprocess((val) => val === 'true' || val === true, z.boolean())
+    .default(true),
   ADMIN_SECRET: z.string().default('admin-secret-key-12345'),
   SMTP_HOST: z.string().default(''),
   SMTP_PORT: z.coerce.number().default(587),
@@ -38,7 +40,9 @@ const envSchema = z.object({
   ALERT_SCORE_THRESHOLD_CRITICAL: z.coerce.number().default(90),
   ANTHROPIC_API_KEY: z.string().default(''),
   GOOGLE_FACT_CHECK_API_KEY: z.string().default(''),
-  GOOGLE_FACT_CHECK_API_URL: z.string().default('https://factchecktools.googleapis.com/v1alpha1/claims:search'),
+  GOOGLE_FACT_CHECK_API_URL: z
+    .string()
+    .default('https://factchecktools.googleapis.com/v1alpha1/claims:search'),
   NEWS_CREDIBILITY_THRESHOLD: z.coerce.number().default(60),
   FAKE_NEWS_MODEL_VERSION: z.string().default('fake-news-analyzer-v1.0'),
   PHASH_SIMILARITY_THRESHOLD: z.coerce.number().default(90),
@@ -83,7 +87,9 @@ const envSchema = z.object({
   DATABASE_IDLE_TIMEOUT_MS: z.coerce.number().default(30000),
   DATABASE_CONNECTION_TIMEOUT_MS: z.coerce.number().default(5000),
   SLOW_QUERY_THRESHOLD_MS: z.coerce.number().default(500),
-  QUERY_LOG_ENABLED: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(false),
+  QUERY_LOG_ENABLED: z
+    .preprocess((val) => val === 'true' || val === true, z.boolean())
+    .default(false),
 
   DASHBOARD_CACHE_TTL: z.coerce.number().default(30),
   DASHBOARD_MAX_FEED_ITEMS: z.coerce.number().default(100),
@@ -94,7 +100,9 @@ const envSchema = z.object({
   REPORT_LOGO_S3_KEY: z.string().default('assets/logo.png'),
   PDF_WATERMARK_TEXT: z.string().default('CONFIDENTIAL'),
 
-  WEBSOCKET_ENABLED: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(true),
+  WEBSOCKET_ENABLED: z
+    .preprocess((val) => val === 'true' || val === true, z.boolean())
+    .default(true),
   WEBSOCKET_CORS_ORIGIN: z.string().default(''),
   WEBSOCKET_HEARTBEAT_MS: z.coerce.number().default(25000),
   WEBSOCKET_TIMEOUT_MS: z.coerce.number().default(60000),

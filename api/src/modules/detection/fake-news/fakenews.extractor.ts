@@ -15,7 +15,7 @@ export class ClaimExtractor {
     sourceUrl: string,
     title: string,
     author: string | null,
-    publishDate: string | null
+    publishDate: string | null,
   ): Promise<ClaimExtraction> {
     const parsedUrl = new URL(sourceUrl);
     const domain = parsedUrl.hostname.toLowerCase().replace(/^www\./, '');
@@ -56,7 +56,9 @@ Return a valid JSON object matching this schema:
     try {
       // Return fallback empty result if ANTHROPIC_API_KEY is not configured
       if (!env.ANTHROPIC_API_KEY) {
-        logger.warn('ANTHROPIC_API_KEY is not configured, returning fallback empty claims extraction.');
+        logger.warn(
+          'ANTHROPIC_API_KEY is not configured, returning fallback empty claims extraction.',
+        );
         return {
           claims: [],
           sourceUrl,
@@ -88,22 +90,24 @@ Return a valid JSON object matching this schema:
             'anthropic-version': '2023-06-01',
             'content-type': 'application/json',
           },
-        }
+        },
       );
 
       const content = response.data.content[0].text;
-      
+
       // Clean potential JSON markdown wrapper if Claude returned any
-      const cleanedJson = content.trim().replace(/^```json/, '').replace(/```$/, '').trim();
+      const cleanedJson = content
+        .trim()
+        .replace(/^```json/, '')
+        .replace(/```$/, '')
+        .trim();
 
       const parsedResponse = JSON.parse(cleanedJson);
 
       let claims: ExtractedClaim[] = parsedResponse.claims || [];
 
       // Sort and take the top 10 claims with highest confidence levels
-      claims = claims
-        .sort((a, b) => b.confidence - a.confidence)
-        .slice(0, 10);
+      claims = claims.sort((a, b) => b.confidence - a.confidence).slice(0, 10);
 
       return {
         claims,

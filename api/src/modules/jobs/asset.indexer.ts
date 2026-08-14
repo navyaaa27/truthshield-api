@@ -18,14 +18,14 @@ export class AssetIndexer {
     userId: string,
     s3Key: string,
     assetName: string,
-    assetType: string
+    assetType: string,
   ): Promise<any> {
     // 1. Insert base asset into the database
     const dbInsert = await query(
       `INSERT INTO brand_assets (org_id, created_by, name, file_path, status)
        VALUES ($1, $2, $3, $4, 'active')
        RETURNING *`,
-      [orgId, userId, assetName, s3Key]
+      [orgId, userId, assetName, s3Key],
     );
     const asset = dbInsert.rows[0];
 
@@ -55,10 +55,7 @@ export class AssetIndexer {
       // 4. Update the DB and populate Redis fast lookup index
       await this.pHashService.storeHashInIndex(asset.id, orgId, hashResult.hash);
 
-      const finalAsset = await query(
-        `SELECT * FROM brand_assets WHERE id = $1`,
-        [asset.id]
-      );
+      const finalAsset = await query(`SELECT * FROM brand_assets WHERE id = $1`, [asset.id]);
 
       await cleanupTempDir(tempDir).catch(() => {});
       return finalAsset.rows[0];

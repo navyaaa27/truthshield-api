@@ -14,12 +14,14 @@ const mockSubClient = {
   quit: jest.fn().mockImplementation(() => Promise.resolve()),
 };
 
-let mockRedisStore: Record<string, string> = {};
+const mockRedisStore: Record<string, string> = {};
 
 jest.mock('../src/shared/redis/redis.client.js', () => ({
   redisClient: {
     duplicate: jest.fn().mockReturnValue(mockSubClient),
-    get: jest.fn().mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
+    get: jest
+      .fn()
+      .mockImplementation(((key: any) => Promise.resolve(mockRedisStore[key] || null)) as any),
     setex: jest.fn().mockImplementation(((key: any, _ttl: any, val: any) => {
       mockRedisStore[key] = val;
       return Promise.resolve('OK');
@@ -37,10 +39,14 @@ jest.mock('../src/shared/redis/redis.client.js', () => ({
         return Promise.resolve('fake_sha_hash');
       }
       if (cmd === 'evalsha' || cmd === 'eval') {
-        const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+        const key =
+          args.find(
+            (arg) =>
+              typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:')),
+          ) || 'unknown_key';
         const val = parseInt(mockRedisStore[key] || '0', 10) + 1;
         mockRedisStore[key] = val.toString();
-        return Promise.resolve([val, 60]); 
+        return Promise.resolve([val, 60]);
       }
       return Promise.resolve();
     }) as any),
@@ -62,7 +68,7 @@ jest.mock('../src/shared/redis/index.js', () => ({
 
 // Mock Database Queries
 let mockAlertCount = 3;
-let mockJobsDb: Record<string, string> = {
+const mockJobsDb: Record<string, string> = {
   'job-123': 'org-uuid-1',
   'job-abc': 'org-uuid-1',
   'job-other-org': 'org-uuid-999',
@@ -74,7 +80,7 @@ jest.mock('../src/shared/database/pool.js', () => ({
       Promise.resolve({
         query: jest.fn().mockImplementation(() => Promise.resolve({ rows: [], rowCount: 0 })),
         release: jest.fn(),
-      })
+      }),
     ),
     end: jest.fn().mockImplementation(() => Promise.resolve()),
   },
@@ -108,14 +114,14 @@ jest.mock('../src/shared/database/index.js', () => ({
       Promise.resolve({
         query: jest.fn().mockImplementation(() => Promise.resolve({ rows: [], rowCount: 0 })),
         release: jest.fn(),
-      })
+      }),
     ),
     end: jest.fn().mockImplementation(() => Promise.resolve()),
   },
   checkDatabaseHealth: (jest.fn() as any).mockResolvedValue({
     status: 'healthy',
     writePool: { connected: true, activeConnections: 1, idleConnections: 1, totalConnections: 2 },
-    readPool: { connected: true, activeConnections: 1, idleConnections: 1, totalConnections: 2 }
+    readPool: { connected: true, activeConnections: 1, idleConnections: 1, totalConnections: 2 },
   }),
 }));
 
@@ -139,7 +145,11 @@ jest.mock('../src/shared/queue/queues.js', () => ({
 
 // Load express app
 import { app } from '../src/app.js';
-import { initializeWebSocket, closeWebSocket, getIO } from '../src/shared/websocket/socket.server.js';
+import {
+  initializeWebSocket,
+  closeWebSocket,
+  getIO,
+} from '../src/shared/websocket/socket.server.js';
 import { socketEmitter } from '../src/shared/websocket/socket.emitter.js';
 
 function signToken(userId: string, role: string, orgId: string) {

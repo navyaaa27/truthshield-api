@@ -55,17 +55,13 @@ export class HiveClient {
 
     try {
       const response = await recordExternalApi('Hive', 'deepfake_detection', () =>
-        axios.post(
-          `${this.apiUrl}/task/sync/deepfake_detection`,
-          form,
-          {
-            headers: {
-              Authorization: `Token ${this.apiKey}`,
-              ...form.getHeaders(),
-            },
-            timeout: 30000, // 30 second timeout
-          }
-        )
+        axios.post(`${this.apiUrl}/task/sync/deepfake_detection`, form, {
+          headers: {
+            Authorization: `Token ${this.apiKey}`,
+            ...form.getHeaders(),
+          },
+          timeout: 30000, // 30 second timeout
+        }),
       );
 
       const duration = Date.now() - startTime;
@@ -83,7 +79,10 @@ export class HiveClient {
       }
       if (status === 429) {
         const retryAfter = parseInt(err.response?.headers?.['retry-after'] || '60', 10);
-        throw new RateLimitError(`Hive API rate limit exceeded. Retry after ${retryAfter}s`, retryAfter);
+        throw new RateLimitError(
+          `Hive API rate limit exceeded. Retry after ${retryAfter}s`,
+          retryAfter,
+        );
       }
       if (status && status >= 500) {
         throw new ExternalServiceError(`Hive API server error: ${status}`, status);
@@ -110,8 +109,8 @@ export class HiveClient {
               'Content-Type': 'application/json',
             },
             timeout: 30000,
-          }
-        )
+          },
+        ),
       );
 
       const duration = Date.now() - startTime;
@@ -129,7 +128,10 @@ export class HiveClient {
       }
       if (status === 429) {
         const retryAfter = parseInt(err.response?.headers?.['retry-after'] || '60', 10);
-        throw new RateLimitError(`Hive API rate limit exceeded. Retry after ${retryAfter}s`, retryAfter);
+        throw new RateLimitError(
+          `Hive API rate limit exceeded. Retry after ${retryAfter}s`,
+          retryAfter,
+        );
       }
       if (status && status >= 500) {
         throw new ExternalServiceError(`Hive API server error: ${status}`, status);

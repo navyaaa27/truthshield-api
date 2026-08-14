@@ -111,11 +111,7 @@ export class DeepfakeAnalyzer {
   /**
    * Analyzes a video by extracting frames and processing each sequentially.
    */
-  private async analyzeVideo(
-    filePath: string,
-    tempDir: string,
-    job: any
-  ): Promise<DeepfakeResult> {
+  private async analyzeVideo(filePath: string, tempDir: string, job: any): Promise<DeepfakeResult> {
     const maxFrames = env.MAX_VIDEO_FRAMES_TO_ANALYZE || 10;
     const framesDir = path.join(tempDir, 'frames');
     await fs.mkdir(framesDir, { recursive: true });
@@ -170,19 +166,14 @@ export class DeepfakeAnalyzer {
 
     const frameScores = frameAnalyses.map((f) => f.frameScore);
     const worstFrameScore = Math.max(...frameScores);
-    const averageFrameScore =
-      frameScores.reduce((a, b) => a + b, 0) / frameScores.length;
+    const averageFrameScore = frameScores.reduce((a, b) => a + b, 0) / frameScores.length;
 
     // Weighted final score: 60% worst frame, 40% average
     const finalScore = Math.round(worstFrameScore * 0.6 + averageFrameScore * 0.4);
     const clampedScore = Math.min(100, Math.max(0, finalScore));
 
     const flags = this.buildFlags(overallHiveResult, null, clampedScore, worstFrameScore);
-    const confidence = this.calculateConfidence(
-      overallHiveResult,
-      null,
-      extractedFrames.length
-    );
+    const confidence = this.calculateConfidence(overallHiveResult, null, extractedFrames.length);
 
     // Collect manipulation indicators across all frame results
     const allIndicators: string[] = [];
@@ -216,7 +207,7 @@ export class DeepfakeAnalyzer {
    */
   calculateImageScore(
     hive: HiveAnalysisResult | null,
-    rekognition: RekognitionResult | null
+    rekognition: RekognitionResult | null,
   ): number {
     // If no faces detected — can't be a deepfake
     if (rekognition && rekognition.faceCount === 0) {
@@ -248,7 +239,7 @@ export class DeepfakeAnalyzer {
    */
   calculateFrameScore(
     hive: HiveAnalysisResult | null,
-    rekognition: RekognitionResult | null
+    rekognition: RekognitionResult | null,
   ): number {
     if (!hive && !rekognition) return 0;
     return this.calculateImageScore(hive, rekognition);
@@ -271,7 +262,7 @@ export class DeepfakeAnalyzer {
     hive: HiveAnalysisResult | null,
     rekognition: RekognitionResult | null,
     _score: number,
-    worstFrameScore: number | null
+    worstFrameScore: number | null,
   ): string[] {
     const flags: string[] = [];
 
@@ -298,7 +289,7 @@ export class DeepfakeAnalyzer {
   private calculateConfidence(
     hive: HiveAnalysisResult | null,
     rekognition: RekognitionResult | null,
-    frameCount: number | null
+    frameCount: number | null,
   ): number {
     let confidence: number;
 

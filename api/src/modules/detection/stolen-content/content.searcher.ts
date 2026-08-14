@@ -15,11 +15,11 @@ export class ContentSearcher {
   async searchForContent(
     inputHash: PHashResult,
     orgId: string,
-    s3Key: string
+    s3Key: string,
   ): Promise<ContentSearchResult[]> {
     const results = await Promise.allSettled([
       this.searchBrandAssets(orgId, inputHash),
-      this.searchWebImages(s3Key)
+      this.searchWebImages(s3Key),
     ]);
 
     const combined: ContentSearchResult[] = [];
@@ -34,7 +34,7 @@ export class ContentSearcher {
             title: `Brand Asset Correlation (ID: ${m.matchedAssetId})`,
             similarity: m.similarity,
             foundVia: 'hash_index',
-            capturedAt: new Date().toISOString()
+            capturedAt: new Date().toISOString(),
           });
         }
       }
@@ -64,12 +64,12 @@ export class ContentSearcher {
    */
   private async searchBrandAssets(
     orgId: string,
-    inputHash: PHashResult
+    inputHash: PHashResult,
   ): Promise<SimilarityMatch[]> {
     return this.pHashService.findSimilarInDatabase(
       orgId,
       inputHash.hash,
-      env.PHASH_SIMILARITY_THRESHOLD || 90
+      env.PHASH_SIMILARITY_THRESHOLD || 90,
     );
   }
 
@@ -77,9 +77,7 @@ export class ContentSearcher {
    * Crawls Google Images reverse search for best-effort web content correlation.
    * TODO: Enterprise tier will use dedicated image search APIs (Google Cloud Vision, TinEye)
    */
-  private async searchWebImages(
-    s3Key: string
-  ): Promise<ContentSearchResult[]> {
+  private async searchWebImages(s3Key: string): Promise<ContentSearchResult[]> {
     const mockPublicUrl = `https://truthshield-assets.s3.amazonaws.com/${s3Key}`;
     const encodedUrl = encodeURIComponent(mockPublicUrl);
     const googleSearchUrl = `https://images.google.com/searchbyimage?image_url=${encodedUrl}`;
@@ -88,8 +86,9 @@ export class ContentSearcher {
       const response = await axios.get(googleSearchUrl, {
         timeout: env.CONTENT_CRAWL_TIMEOUT_MS || 8000,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        },
       });
 
       const $ = cheerio.load(response.data);
@@ -106,14 +105,16 @@ export class ContentSearcher {
             title: title.trim(),
             similarity: Math.round(65 + Math.random() * 25), // Simulating reasonable web similarity bound
             foundVia: 'web_search',
-            capturedAt: new Date().toISOString()
+            capturedAt: new Date().toISOString(),
           });
         }
       });
 
       return searchMatches.slice(0, 10);
     } catch (err: any) {
-      logger.warn(`Reverse image crawl lookup failed: ${err.message}. Returning empty matches list.`);
+      logger.warn(
+        `Reverse image crawl lookup failed: ${err.message}. Returning empty matches list.`,
+      );
       return [];
     }
   }
@@ -121,9 +122,7 @@ export class ContentSearcher {
   /**
    * Proactively verifies accessible infringing targets, executing SSRF-safe HEAD lookups.
    */
-  async checkExactUrlMatches(
-    potentialInfringingUrls: string[]
-  ): Promise<ContentSearchResult[]> {
+  async checkExactUrlMatches(potentialInfringingUrls: string[]): Promise<ContentSearchResult[]> {
     const verified: ContentSearchResult[] = [];
 
     for (const targetUrl of potentialInfringingUrls) {
@@ -135,8 +134,8 @@ export class ContentSearcher {
         const res = await axios.head(targetUrl, {
           timeout: 4000,
           headers: {
-            'User-Agent': 'TruthShieldVerificationBot/1.0'
-          }
+            'User-Agent': 'TruthShieldVerificationBot/1.0',
+          },
         });
 
         if (res.status >= 200 && res.status < 400) {
@@ -145,7 +144,7 @@ export class ContentSearcher {
             title: `Infringing Asset Mirror Target [Validated: ${res.status}]`,
             similarity: 95,
             foundVia: 'web_search',
-            capturedAt: new Date().toISOString()
+            capturedAt: new Date().toISOString(),
           });
         }
       } catch (err: any) {

@@ -137,7 +137,7 @@ export const recordDetectionJob = (
   verdict: string,
   orgPlan: string,
   contentType: string,
-  durationMs: number
+  durationMs: number,
 ): void => {
   detectionJobsTotal.inc({ module: moduleName, verdict, org_plan: orgPlan });
   detectionJobDurationMs.observe({ module: moduleName, content_type: contentType }, durationMs);
@@ -149,7 +149,7 @@ export const recordDetectionJob = (
 export async function recordExternalApi<T>(
   service: string,
   endpoint: string,
-  fn: () => Promise<T>
+  fn: () => Promise<T>,
 ): Promise<T> {
   const start = process.hrtime();
   try {

@@ -9,10 +9,14 @@ import { DetectionJob, CreateJobDTO, JobWithResults, DetectionResult } from './j
 function validateJobModules(contentType: string, modules: string[]): void {
   for (const mod of modules) {
     if (mod === 'deepfake' && contentType !== 'video' && contentType !== 'image') {
-      throw new ValidationError(`Module 'deepfake' is only compatible with 'video' or 'image' content types`);
+      throw new ValidationError(
+        `Module 'deepfake' is only compatible with 'video' or 'image' content types`,
+      );
     }
     if (mod === 'fake_news' && contentType !== 'article' && contentType !== 'url') {
-      throw new ValidationError(`Module 'fake_news' is only compatible with 'article' or 'url' content types`);
+      throw new ValidationError(
+        `Module 'fake_news' is only compatible with 'article' or 'url' content types`,
+      );
     }
   }
 }
@@ -55,7 +59,7 @@ export class JobModel {
       ) 
       VALUES ($1, $2, $3, $4, 'pending', $5, $6) 
       RETURNING *`,
-      [orgId, userId, contentType, detectionModules, finalPriority, sourceUrl || null]
+      [orgId, userId, contentType, detectionModules, finalPriority, sourceUrl || null],
     );
 
     return res.rows[0];
@@ -65,10 +69,10 @@ export class JobModel {
    * Fetches a single job scoped by organization ID.
    */
   static async getJobById(jobId: string, orgId: string): Promise<DetectionJob | null> {
-    const res = await query(
-      `SELECT * FROM detection_jobs WHERE id = $1 AND org_id = $2`,
-      [jobId, orgId]
-    );
+    const res = await query(`SELECT * FROM detection_jobs WHERE id = $1 AND org_id = $2`, [
+      jobId,
+      orgId,
+    ]);
     return res.rows[0] || null;
   }
 
@@ -82,7 +86,7 @@ export class JobModel {
       contentType?: string;
       page: number;
       limit: number;
-    }
+    },
   ): Promise<{ jobs: DetectionJob[]; total: number; page: number }> {
     const page = Math.max(1, filters.page || 1);
     const limit = Math.min(Math.max(1, filters.limit || 10), 100);
@@ -121,7 +125,7 @@ export class JobModel {
     const selectParams = [...queryParams];
     selectParams.push(limit);
     queryText += ` ORDER BY j.created_at DESC LIMIT $${selectParams.length}`;
-    
+
     selectParams.push(offset);
     queryText += ` OFFSET $${selectParams.length}`;
 
@@ -145,7 +149,7 @@ export class JobModel {
   static async updateJobStatus(
     jobId: string,
     status: string,
-    extras?: { errorMessage?: string; s3Key?: string }
+    extras?: { errorMessage?: string; s3Key?: string },
   ): Promise<DetectionJob> {
     // 1. Fetch current job
     const fetchRes = await query(`SELECT * FROM detection_jobs WHERE id = $1`, [jobId]);
@@ -169,7 +173,9 @@ export class JobModel {
     if (currentStatus !== status) {
       const allowed = allowedTransitions[currentStatus] || [];
       if (!allowed.includes(status)) {
-        throw new ValidationError(`Invalid job status transition from '${currentStatus}' to '${status}'`);
+        throw new ValidationError(
+          `Invalid job status transition from '${currentStatus}' to '${status}'`,
+        );
       }
     }
 
@@ -220,7 +226,7 @@ export class JobModel {
 
     const resultsRes = await query(
       `SELECT * FROM detection_results WHERE job_id = $1 AND org_id = $2 ORDER BY created_at ASC`,
-      [jobId, orgId]
+      [jobId, orgId],
     );
 
     return {

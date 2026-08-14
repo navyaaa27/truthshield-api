@@ -93,7 +93,7 @@ export function aggregateResults(results: any[]): JobAggregation {
   const max = env.HUMAN_REVIEW_SCORE_MAX || 70;
 
   const unreviewedResults = results.filter(
-    (r) => !r.reviewed_by && !(r.flags && r.flags.includes('human_review_override'))
+    (r) => !r.reviewed_by && !(r.flags && r.flags.includes('human_review_override')),
   );
 
   const verdicts = unreviewedResults.map((r) => r.verdict);
@@ -117,7 +117,7 @@ export function aggregateResults(results: any[]): JobAggregation {
 
   // If there are human overrides, they represent the absolute ground truth
   const humanOverrides = results.filter(
-    (r) => r.reviewed_by || (r.flags && r.flags.includes('human_review_override'))
+    (r) => r.reviewed_by || (r.flags && r.flags.includes('human_review_override')),
   );
   if (humanOverrides.length > 0) {
     const overriddenVerdicts = humanOverrides.map((o) => o.verdict);
@@ -143,7 +143,7 @@ export function aggregateResults(results: any[]): JobAggregation {
   const summary = buildSummary(results.length, riskLevel, dominantThreat, moduleScores);
 
   logger.info(
-    `[Aggregator] Score: ${overallScore}, Verdict: ${overallVerdict}, Risk: ${riskLevel}, Dominant: ${dominantThreat || 'none'}`
+    `[Aggregator] Score: ${overallScore}, Verdict: ${overallVerdict}, Risk: ${riskLevel}, Dominant: ${dominantThreat || 'none'}`,
   );
 
   return {
@@ -177,7 +177,7 @@ function buildSummary(
   moduleCount: number,
   riskLevel: string,
   dominantThreat: string | null,
-  moduleScores: Record<string, number>
+  moduleScores: Record<string, number>,
 ): string {
   const moduleName = (mod: string): string => {
     const names: Record<string, string> = {

@@ -48,7 +48,7 @@ export async function handleDeepfake(job: any): Promise<any> {
         JSON.stringify(unavailableResult.flags),
         env.DEEPFAKE_MODEL_VERSION,
         JSON.stringify(unavailableResult),
-      ]
+      ],
     );
 
     return dbResult.rows[0];
@@ -60,7 +60,7 @@ export async function handleDeepfake(job: any): Promise<any> {
   const processingMs = Date.now() - startTime;
 
   logger.info(
-    `[Deepfake] Analysis complete in ${processingMs}ms — score: ${result.score}, verdict: ${result.verdict}`
+    `[Deepfake] Analysis complete in ${processingMs}ms — score: ${result.score}, verdict: ${result.verdict}`,
   );
 
   const dbResult = await query(
@@ -76,7 +76,7 @@ export async function handleDeepfake(job: any): Promise<any> {
       env.DEEPFAKE_MODEL_VERSION,
       processingMs,
       JSON.stringify(result),
-    ]
+    ],
   );
 
   return dbResult.rows[0];

@@ -41,10 +41,7 @@ router.post(
       .optional()
       .isInt({ min: 1, max: 10 })
       .withMessage('priority must be an integer between 1 and 10'),
-    body('sourceUrl')
-      .optional()
-      .isString()
-      .trim(),
+    body('sourceUrl').optional().isString().trim(),
     validateRequest,
   ],
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -54,7 +51,7 @@ router.post(
       const userId = (req as any).user.userId;
 
       // 1. Create the pending job record in DB
-      let job = await JobModel.createJob(orgId, userId, {
+      const job = await JobModel.createJob(orgId, userId, {
         contentType,
         detectionModules,
         sourceUrl,
@@ -100,7 +97,7 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 /**
@@ -111,10 +108,7 @@ router.get(
   '/jobs',
   authenticate,
   [
-    queryVal('page')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('page must be a positive integer'),
+    queryVal('page').optional().isInt({ min: 1 }).withMessage('page must be a positive integer'),
     queryVal('limit')
       .optional()
       .isInt({ min: 1, max: 100 })
@@ -134,8 +128,8 @@ router.get(
       const orgId = (req as any).user.orgId;
       const status = req.query.status as string | undefined;
       const contentType = req.query.contentType as string | undefined;
-      const page = parseInt(req.query.page as string || '1', 10);
-      const limit = parseInt(req.query.limit as string || '10', 10);
+      const page = parseInt((req.query.page as string) || '1', 10);
+      const limit = parseInt((req.query.limit as string) || '10', 10);
 
       const cacheKey = CacheKeys.jobsList(orgId, status || 'all', page, limit);
 
@@ -179,7 +173,7 @@ router.get(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 /**
@@ -232,7 +226,7 @@ router.get(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 /**
@@ -263,7 +257,7 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 /**
@@ -293,7 +287,7 @@ router.delete(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 export default router;

@@ -23,7 +23,9 @@ export class StolenContentAnalyzer {
     const contentType = job.content_type;
 
     if (!s3Key) {
-      throw new Error(`Job ${job.id} does not contain a valid s3_key required for stolen content checks.`);
+      throw new Error(
+        `Job ${job.id} does not contain a valid s3_key required for stolen content checks.`,
+      );
     }
 
     const tempDir = await createTempDir('stolen-analysis');
@@ -33,12 +35,12 @@ export class StolenContentAnalyzer {
       // 1. Download file from S3 using pre-signed GET URL
       logger.info(`[StolenContent] Fetching file from S3: ${s3Key}`);
       const downloadUrl = await S3Service.getPresignedDownloadUrl(s3Key);
-      
+
       const response = await fetch(downloadUrl);
       if (!response.ok) {
         throw new Error(`Failed to download file from S3: ${response.statusText}`);
       }
-      
+
       const arrayBuffer = await response.arrayBuffer();
       const fileBuffer = Buffer.from(arrayBuffer);
       await fs.writeFile(filePath, fileBuffer);
@@ -50,10 +52,14 @@ export class StolenContentAnalyzer {
       const webMatches = await this.searcher.searchForContent(hashResult, orgId, s3Key);
 
       // Resolve brand asset DB matches separately for detailed mapping
-      const brandAssetMatches = await this.pHashService.findSimilarInDatabase(orgId, hashResult.hash, 60);
+      const brandAssetMatches = await this.pHashService.findSimilarInDatabase(
+        orgId,
+        hashResult.hash,
+        60,
+      );
 
-      const exactMatches = brandAssetMatches.filter(m => m.matchType === 'exact');
-      const nearMatches = brandAssetMatches.filter(m => m.matchType === 'near_duplicate');
+      const exactMatches = brandAssetMatches.filter((m) => m.matchType === 'exact');
+      const nearMatches = brandAssetMatches.filter((m) => m.matchType === 'near_duplicate');
 
       // 4. Calculate final forensic score
       let score = 5; // Default score if no matches are found
@@ -64,8 +70,8 @@ export class StolenContentAnalyzer {
       } else if (nearMatches.length > 0) {
         score = 75;
       } else {
-        const highWebMatch = webMatches.find(m => m.similarity > 80);
-        const medWebMatch = webMatches.find(m => m.similarity > 60);
+        const highWebMatch = webMatches.find((m) => m.similarity > 80);
+        const medWebMatch = webMatches.find((m) => m.similarity > 60);
         if (highWebMatch) {
           score = 65;
         } else if (medWebMatch) {
@@ -102,13 +108,17 @@ export class StolenContentAnalyzer {
       // 6. Generate conditional DMCA draft
       let dmcaDraft: DMCADraft | null = null;
 
-      const highestMatch = [...brandAssetMatches, ...webMatches.map(w => ({
-        matchedAssetId: null,
-        matchedUrl: w.url,
-        similarity: w.similarity,
-        matchType: w.similarity >= 95 ? 'exact' : (w.similarity >= 85 ? 'near_duplicate' : 'similar'),
-        matchedOrg: null
-      }))].sort((a, b) => b.similarity - a.similarity)[0];
+      const highestMatch = [
+        ...brandAssetMatches,
+        ...webMatches.map((w) => ({
+          matchedAssetId: null,
+          matchedUrl: w.url,
+          similarity: w.similarity,
+          matchType:
+            w.similarity >= 95 ? 'exact' : w.similarity >= 85 ? 'near_duplicate' : 'similar',
+          matchedOrg: null,
+        })),
+      ].sort((a, b) => b.similarity - a.similarity)[0];
 
       if (highestMatch && highestMatch.similarity > 85) {
         dmcaDraft = await this.dmcaGenerator.generateDMCADraft({
@@ -116,7 +126,7 @@ export class StolenContentAnalyzer {
           originalAssetDescription: 'Proprietary digital media asset registered on TruthShield',
           orgName,
           orgContact,
-          matchSimilarity: highestMatch.similarity
+          matchSimilarity: highestMatch.similarity,
         });
       }
 
@@ -142,8 +152,8 @@ export class StolenContentAnalyzer {
           webMatches,
           brandAssetMatches,
           dmcaDraft,
-          totalMatchesFound: brandAssetMatches.length + webMatches.length
-        }
+          totalMatchesFound: brandAssetMatches.length + webMatches.length,
+        },
       };
     } catch (err: any) {
       // Guarantee cleanup of temporary directories under error conditions

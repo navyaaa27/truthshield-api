@@ -23,7 +23,7 @@ export async function cleanupTempDir(dirPath: string): Promise<void> {
     // Safety check: ensure we only delete within TEMP_ROOT
     const resolvedPath = path.resolve(dirPath);
     const resolvedRoot = path.resolve(TEMP_ROOT);
-    
+
     if (resolvedPath.startsWith(resolvedRoot) && resolvedPath !== resolvedRoot) {
       await fs.rm(resolvedPath, { recursive: true, force: true });
     }

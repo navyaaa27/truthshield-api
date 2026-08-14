@@ -65,10 +65,14 @@ jest.mock('../src/shared/redis/redis.client.js', () => ({
         return Promise.resolve('fake_sha_hash');
       }
       if (cmd === 'evalsha' || cmd === 'eval') {
-        const key = args.find(arg => typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:'))) || 'unknown_key';
+        const key =
+          args.find(
+            (arg) =>
+              typeof arg === 'string' && (arg.startsWith('ts:rl:') || arg.startsWith('ts:sd:')),
+          ) || 'unknown_key';
         const val = parseInt(mockRedisStore.get(key) || '0', 10) + 1;
         mockRedisStore.set(key, val.toString());
-        return Promise.resolve([val, 60]); 
+        return Promise.resolve([val, 60]);
       }
       return Promise.resolve();
     }) as any),
@@ -103,29 +107,41 @@ jest.mock('../src/shared/database/index.js', () => ({
   query: (jest.fn() as any).mockResolvedValue({ rows: [], rowCount: 0 }),
 }));
 
-jest.mock('../src/shared/database/pool.js', () => ({
-  pool: {
-    connect: (jest.fn() as any).mockImplementation(() =>
-      Promise.resolve({
-        query: jest.fn().mockImplementation(() => Promise.resolve({ rows: [], rowCount: 0 })),
-        release: jest.fn(),
-      })
-    ),
-    end: (jest.fn() as any).mockImplementation(() => Promise.resolve()),
-  },
-  testConnection: (jest.fn() as any).mockImplementation(() => Promise.resolve()),
-  query: (jest.fn() as any).mockImplementation(() => Promise.resolve({ rows: [], rowCount: 0 })),
-  writePool: {
-    query: (jest.fn() as any).mockResolvedValue({ rows: [{ '?column?': 1 }], rowCount: 1 }),
-    totalCount: 5, idleCount: 3, waitingCount: 0, on: jest.fn(),
-  } as any,
-  readPool: {
-    query: (jest.fn() as any).mockResolvedValue({ rows: [{ '?column?': 1 }], rowCount: 1 }),
-    totalCount: 5, idleCount: 3, waitingCount: 0, on: jest.fn(),
-  } as any,
-  getSlowQueriesLastHourCount: (jest.fn() as any).mockReturnValue(0),
-  updatePoolMetrics: jest.fn(),
-} as any));
+jest.mock(
+  '../src/shared/database/pool.js',
+  () =>
+    ({
+      pool: {
+        connect: (jest.fn() as any).mockImplementation(() =>
+          Promise.resolve({
+            query: jest.fn().mockImplementation(() => Promise.resolve({ rows: [], rowCount: 0 })),
+            release: jest.fn(),
+          }),
+        ),
+        end: (jest.fn() as any).mockImplementation(() => Promise.resolve()),
+      },
+      testConnection: (jest.fn() as any).mockImplementation(() => Promise.resolve()),
+      query: (jest.fn() as any).mockImplementation(() =>
+        Promise.resolve({ rows: [], rowCount: 0 }),
+      ),
+      writePool: {
+        query: (jest.fn() as any).mockResolvedValue({ rows: [{ '?column?': 1 }], rowCount: 1 }),
+        totalCount: 5,
+        idleCount: 3,
+        waitingCount: 0,
+        on: jest.fn(),
+      } as any,
+      readPool: {
+        query: (jest.fn() as any).mockResolvedValue({ rows: [{ '?column?': 1 }], rowCount: 1 }),
+        totalCount: 5,
+        idleCount: 3,
+        waitingCount: 0,
+        on: jest.fn(),
+      } as any,
+      getSlowQueriesLastHourCount: (jest.fn() as any).mockReturnValue(0),
+      updatePoolMetrics: jest.fn(),
+    }) as any,
+);
 
 // Mock BullMQ
 jest.mock('bullmq', () => ({
@@ -209,9 +225,7 @@ describe('Redis Caching Layer Tests', () => {
       mockRedisHealthy = false;
 
       // Should not throw
-      await expect(
-        cacheService.set('any:key', { data: 1 }, 60)
-      ).resolves.toBeUndefined();
+      await expect(cacheService.set('any:key', { data: 1 }, 60)).resolves.toBeUndefined();
     });
 
     it('getOrSet() calls fetchFn directly on Redis failure', async () => {
