@@ -148,14 +148,14 @@ export default function DashboardPage() {
       setUnreadCount(data.count);
     });
 
-    socket.on('alert:new', (data: any) => {
+    socket.on('alert:new', (data: Record<string, unknown>) => {
       const newAlert: Alert = {
-        id: data.alertId,
-        title: data.title,
-        severity: data.severity,
-        jobId: data.jobId,
-        module: data.module,
-        score: data.score,
+        id: data.alertId as string,
+        title: data.title as string,
+        severity: data.severity as 'high' | 'critical' | 'info',
+        jobId: data.jobId as string,
+        module: data.module as string,
+        score: data.score as number,
         acknowledged_at: null,
         resolved_at: null,
       };
@@ -189,12 +189,6 @@ export default function DashboardPage() {
   }, []);
 
   /* ── Tab Changes & Data Fetching ───────────────────────── */
-  useEffect(() => {
-    if (activeTab === 'reports') fetchJobs();
-    if (activeTab === 'alerts') fetchAlerts();
-    if (activeTab === 'settings') fetchApiKeys();
-  }, [activeTab]);
-
   const fetchJobs = async () => {
     try {
       const res = await api.get('/jobs?limit=20');
@@ -222,6 +216,12 @@ export default function DashboardPage() {
       console.error('Error fetching API keys:', err);
     }
   };
+
+  useEffect(() => {
+    if (activeTab === 'reports') fetchJobs();
+    if (activeTab === 'alerts') fetchAlerts();
+    if (activeTab === 'settings') fetchApiKeys();
+  }, [activeTab]);
 
   /* ── Alert Interaction Triggers ────────────────────────── */
   const handleAcknowledgeAlert = async (alertId: string) => {
@@ -272,7 +272,7 @@ export default function DashboardPage() {
         }
         attempts++;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Verification error:', err);
     } finally {
       setVerifying(false);

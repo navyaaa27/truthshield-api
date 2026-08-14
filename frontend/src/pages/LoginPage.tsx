@@ -41,7 +41,7 @@ function AnimatedCount({ target }: { target: number }) {
     const unsub = rounded.on('change', v => setDisplay(v));
     const ctrl = animate(count, target, { duration: 2, ease: 'easeOut' });
     return () => { ctrl.stop(); unsub(); };
-  }, [target]);
+  }, [target, count, rounded]);
 
   return <>{display}</>;
 }
@@ -167,12 +167,13 @@ export default function LoginPage() {
         await login(email, password);
       }
       navigate('/dashboard');
-    } catch (err: any) {
-      if (!err?.response) {
+    } catch (err: unknown) {
+      if (!(err instanceof Error) && !(typeof err === 'object' && err !== null && 'response' in err)) {
         setError('Cannot reach the server. Make sure the API is running on localhost:3000.');
       } else {
-        const valError = err.response.data?.errors?.[0]?.msg;
-        setError(valError || err.response.data?.message || 'Authentication failed. Check your credentials.');
+        const errorRes = (err as Record<string, unknown>).response as Record<string, unknown> | undefined;
+        const valError = (errorRes?.data as Record<string, unknown>)?.errors?.[0]?.msg;
+        setError(valError || (errorRes?.data as Record<string, unknown>)?.message || 'Authentication failed. Check your credentials.');
       }
     } finally {
       setLoading(false);
