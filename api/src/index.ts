@@ -13,6 +13,9 @@ const server = http.createServer(app);
 async function bootstrap() {
   try {
     // 1. Verify Database Connection
+    logger.info('=============================================');
+    logger.info('       TruthShield API Server Booting        ');
+    logger.info('=============================================');
     logger.info('Connecting to PostgreSQL database...');
     if (process.env.MOCK_INFRA !== 'true') {
       try {
