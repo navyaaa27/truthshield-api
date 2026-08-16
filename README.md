@@ -103,4 +103,4 @@ npm run dev
 The frontend will run on `http://localhost:5173`.
 
 ## 📜 License
-© 2026 TruthShield AI · Built to protect the information layer.
+© 2026 TruthShield AI · All rights reserved. Built to protect the information layer.
