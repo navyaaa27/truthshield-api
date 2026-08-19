@@ -155,7 +155,7 @@ export default function DashboardPage() {
     "fake_news",
   ]);
   const [verifying, setVerifying] = useState(false);
-  const [verdict, setVerdict] = useState<any>(null);
+  const [verdict, setVerdict] = useState<Record<string, unknown> | null>(null);
 
   // File Upload State
   const [isDragging, setIsDragging] = useState(false);
@@ -168,7 +168,7 @@ export default function DashboardPage() {
   const [uploadStatus, setUploadStatus] = useState<
     "idle" | "uploading" | "processing" | "done"
   >("idle");
-  const [fileVerdict, setFileVerdict] = useState<any>(null);
+  const [fileVerdict, setFileVerdict] = useState<Record<string, unknown> | null>(null);
 
   // History & API Keys State
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -187,7 +187,7 @@ export default function DashboardPage() {
   const socketRef = useRef<Socket | null>(null);
 
   // Modals / Details
-  const [selectedJobDetail, setSelectedJobDetail] = useState<any>(null);
+  const [selectedJobDetail, setSelectedJobDetail] = useState<Job | null>(null);
 
   /* ── WebSocket Setup ───────────────────────────────────── */
   useEffect(() => {
