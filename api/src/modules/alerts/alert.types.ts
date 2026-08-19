@@ -32,6 +32,7 @@ export interface AlertStats {
     medium: number;
     high: number;
     critical: number;
+    info: number;
   };
   unread: number;
 }

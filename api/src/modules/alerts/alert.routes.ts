@@ -65,6 +65,7 @@ router.get(
              COUNT(CASE WHEN severity = 'medium' THEN 1 END)::int as medium,
              COUNT(CASE WHEN severity = 'high' THEN 1 END)::int as high,
              COUNT(CASE WHEN severity = 'critical' THEN 1 END)::int as critical,
+             COUNT(CASE WHEN severity = 'info' THEN 1 END)::int as info,
              COUNT(CASE WHEN acknowledged_at IS NULL THEN 1 END)::int as unread
            FROM alerts
            WHERE org_id = $1`,
@@ -79,6 +80,7 @@ router.get(
             medium: row?.medium || 0,
             high: row?.high || 0,
             critical: row?.critical || 0,
+            info: row?.info || 0,
           },
           unread: row?.unread || 0,
         };
