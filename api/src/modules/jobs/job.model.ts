@@ -5,6 +5,14 @@ import { DetectionJob, CreateJobDTO, JobWithResults, DetectionResult } from './j
 
 /**
  * Validates module alignment compatibility for content types.
+ *
+ * @param contentType - The content type of the detection job (e.g. 'image', 'url').
+ * @param modules     - Array of requested detection module identifiers.
+ * @throws {ValidationError} When a module is incompatible with the given content type.
+ *
+ * @example
+ * validateJobModules('image', ['deepfake']); // OK
+ * validateJobModules('article', ['deepfake']); // throws ValidationError
  */
 function validateJobModules(contentType: string, modules: string[]): void {
   for (const mod of modules) {
