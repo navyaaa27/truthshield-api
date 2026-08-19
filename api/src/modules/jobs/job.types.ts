@@ -8,7 +8,7 @@ export interface DetectionJob {
   priority: number;
   s3_key: string | null;
   source_url: string | null;
-  source_metadata: any;
+  source_metadata: Record<string, unknown> | null;
   error_message: string | null;
   retry_count: number;
   max_retries: number;
@@ -42,7 +42,7 @@ export interface DetectionResult {
   confidence: number;
   model_version: string;
   processing_time_ms: number | null;
-  result_data: any;
+  result_data: Record<string, unknown> | null;
   flags: string[];
   reviewed_by: string | null;
   reviewed_at: Date | null;
