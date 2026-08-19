@@ -169,7 +169,7 @@ app.get('/health', async (_req, res) => {
     },
     websocket: websocketStats,
     uptime: process.uptime(),
-    version: '1.0.0',
+    version: '1.0.2',
   });
 });
 
