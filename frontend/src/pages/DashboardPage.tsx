@@ -285,6 +285,7 @@ export default function DashboardPage() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (activeTab === "reports") fetchJobs();
     if (activeTab === "alerts") fetchAlerts();
