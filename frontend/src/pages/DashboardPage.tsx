@@ -135,7 +135,7 @@ interface ApiKey {
 interface Alert {
   id: string;
   title: string;
-  severity: "low" | "medium" | "high" | "critical";
+  severity: "low" | "medium" | "high" | "critical" | "info";
   jobId: string;
   module: string;
   score: number;
