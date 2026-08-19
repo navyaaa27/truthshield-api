@@ -196,30 +196,44 @@ router.get(
           throw new NotFoundError('Job record not found or tenant partition mismatch');
         }
 
-        const resp: any = { success: true, job: jobWithResults };
-        if ((jobWithResults as any).aggregated_score !== undefined) {
+        type JobDetailResponse = {
+          __skipCache?: boolean;
+          success: boolean;
+          job: typeof jobWithResults;
+          aggregation?: {
+            aggregated_score: number | null;
+            aggregated_verdict: string | null;
+            aggregated_risk_level: string | null;
+            modules_succeeded: string[];
+            modules_failed: string[];
+            modules_skipped: string[];
+          };
+        };
+
+        const resp: JobDetailResponse = { success: true, job: jobWithResults };
+        const extended = jobWithResults as typeof jobWithResults & Record<string, unknown>;
+        if (extended.aggregated_score !== undefined) {
           resp.aggregation = {
-            aggregated_score: (jobWithResults as any).aggregated_score,
-            aggregated_verdict: (jobWithResults as any).aggregated_verdict,
-            aggregated_risk_level: (jobWithResults as any).aggregated_risk_level,
-            modules_succeeded: (jobWithResults as any).modules_succeeded ?? [],
-            modules_failed: (jobWithResults as any).modules_failed ?? [],
-            modules_skipped: (jobWithResults as any).modules_skipped ?? [],
+            aggregated_score: (extended.aggregated_score as number) ?? null,
+            aggregated_verdict: (extended.aggregated_verdict as string) ?? null,
+            aggregated_risk_level: (extended.aggregated_risk_level as string) ?? null,
+            modules_succeeded: (extended.modules_succeeded as string[]) ?? [],
+            modules_failed: (extended.modules_failed as string[]) ?? [],
+            modules_skipped: (extended.modules_skipped as string[]) ?? [],
           };
         }
 
         // Don't cache in-flight jobs
-        const jobStatus = (jobWithResults as any).status;
-        if (jobStatus === 'pending' || jobStatus === 'processing') {
+        if (jobWithResults.status === 'pending' || jobWithResults.status === 'processing') {
           return { __skipCache: true, ...resp };
         }
         return resp;
       });
 
       // If __skipCache was set, invalidate immediately so it's not stored
-      if ((response as any).__skipCache) {
+      if ((response as Record<string, unknown>).__skipCache) {
         await cacheService.delete(cacheKey);
-        delete (response as any).__skipCache;
+        delete (response as Record<string, unknown>).__skipCache;
       }
 
       res.status(200).json(response);
