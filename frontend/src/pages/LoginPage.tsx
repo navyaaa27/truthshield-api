@@ -253,8 +253,10 @@ export default function LoginPage() {
         const errorRes = (err as Record<string, unknown>).response as
           | Record<string, unknown>
           | undefined;
-        const valError = (errorRes?.data as Record<string, unknown>)
-          ?.errors?.[0]?.msg;
+        const valError = (
+          (errorRes?.data as Record<string, unknown>)
+            ?.errors as Array<Record<string, string>>
+        )?.[0]?.msg;
         setError(
           valError ||
             (errorRes?.data as Record<string, unknown>)?.message ||
