@@ -242,10 +242,20 @@ export default function LoginPage() {
       }
       navigate("/dashboard");
     } catch (err: unknown) {
-      if (
-        !(err instanceof Error) &&
-        !(typeof err === "object" && err !== null && "response" in err)
-      ) {
+      const axiosErr = err as Record<string, unknown>;
+      const hasResponse =
+        typeof axiosErr === "object" &&
+        axiosErr !== null &&
+        "response" in axiosErr &&
+        axiosErr.response != null;
+      const hasRequest =
+        typeof axiosErr === "object" &&
+        axiosErr !== null &&
+        "request" in axiosErr &&
+        axiosErr.response == null;
+
+      if (hasRequest || (!hasResponse && !(err instanceof Error))) {
+        // Network-level failure: server not reachable
         setError(
           "Cannot reach the server. Make sure the API is running on localhost:3000.",
         );
