@@ -260,16 +260,22 @@ export default function LoginPage() {
           "Cannot reach the server. Make sure the API is running on localhost:3000.",
         );
       } else {
-        const errorRes = (err as Record<string, unknown>).response as
-          | Record<string, unknown>
-          | undefined;
-        const valError = (
-          (errorRes?.data as Record<string, unknown>)
-            ?.errors as Array<Record<string, string>>
-        )?.[0]?.msg;
+        const errorRes = axiosErr.response as Record<string, unknown> | undefined;
+        const data = errorRes?.data as Record<string, unknown> | undefined;
+
+        // Check express-validator error array: { errors: [{ msg }] }
+        const valError = (data?.errors as Array<Record<string, string>>)?.[0]?.msg;
+
+        // Check our API error envelope: { error: { message } }
+        const apiError = (data?.error as Record<string, string>)?.message;
+
+        // Check flat message (fallback for 3rd-party middleware)
+        const flatMessage = data?.message as string | undefined;
+
         setError(
           valError ||
-            (errorRes?.data as Record<string, unknown>)?.message ||
+            apiError ||
+            flatMessage ||
             "Authentication failed. Check your credentials.",
         );
       }
