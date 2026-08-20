@@ -61,11 +61,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   const login = async (email: string, password: string) => {
     const res = await api.post("/auth/login", { email, password });
-    const { tokens, user: userData } = res.data;
+    const { tokens } = res.data;
     localStorage.setItem("ts_access_token", tokens.accessToken);
     localStorage.setItem("ts_refresh_token", tokens.refreshToken);
-    setUser(userData);
+    // Fetch the full user profile so all fields (name, organizationId) are populated
+    const meRes = await api.get("/users/me");
+    setUser(meRes.data.data.user);
   };
+
 
   /**
    * Discards the active user session and clears stored tokens.
