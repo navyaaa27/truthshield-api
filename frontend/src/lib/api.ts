@@ -17,14 +17,21 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// On 401 — clear storage and redirect to login
+// On 401 — clear storage and redirect to login only if we are outside the login flow
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (error.response?.status === 401) {
+    const isAuthEndpoint =
+      error.config?.url?.includes("/auth/login") ||
+      error.config?.url?.includes("/auth/register") ||
+      error.config?.url?.includes("/auth/refresh");
+
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem("ts_access_token");
       localStorage.removeItem("ts_refresh_token");
-      window.location.href = "/login";
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   },
