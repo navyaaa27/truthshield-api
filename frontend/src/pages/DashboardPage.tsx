@@ -143,6 +143,18 @@ interface Alert {
   resolved_at?: string | null;
 }
 
+interface ScanVerdict {
+  job: Job;
+  aggregation: {
+    aggregated_score: number;
+    aggregated_verdict: string;
+    aggregated_risk_level: string;
+    modules_succeeded?: string[];
+    modules_failed?: string[];
+    modules_skipped?: string[];
+  };
+}
+
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("scan");
@@ -155,7 +167,7 @@ export default function DashboardPage() {
     "fake_news",
   ]);
   const [verifying, setVerifying] = useState(false);
-  const [verdict, setVerdict] = useState<Record<string, unknown> | null>(null);
+  const [verdict, setVerdict] = useState<ScanVerdict | null>(null);
 
   // File Upload State
   const [isDragging, setIsDragging] = useState(false);
@@ -168,7 +180,7 @@ export default function DashboardPage() {
   const [uploadStatus, setUploadStatus] = useState<
     "idle" | "uploading" | "processing" | "done"
   >("idle");
-  const [fileVerdict, setFileVerdict] = useState<Record<string, unknown> | null>(null);
+  const [fileVerdict, setFileVerdict] = useState<ScanVerdict | null>(null);
 
   // History & API Keys State
   const [jobs, setJobs] = useState<Job[]>([]);
