@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import api from "../lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { io, Socket } from "socket.io-client";
 import "./DashboardPage.css";
+
 
 const IconFileText = () => (
   <svg
@@ -269,16 +270,16 @@ export default function DashboardPage() {
   }, []);
 
   /* ── Tab Changes & Data Fetching ───────────────────────── */
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     try {
       const res = await api.get("/jobs?limit=20");
       setJobs(res.data.jobs || []);
     } catch (err) {
       console.error("Error fetching jobs:", err);
     }
-  };
+  }, []);
 
-  const fetchAlerts = async () => {
+  const fetchAlerts = useCallback(async () => {
     try {
       const res = await api.get("/alerts?limit=20");
       const items = res.data.alerts || res.data || [];
@@ -286,23 +287,28 @@ export default function DashboardPage() {
     } catch (err) {
       console.error("Error fetching alerts:", err);
     }
-  };
+  }, []);
 
-  const fetchApiKeys = async () => {
+  const fetchApiKeys = useCallback(async () => {
     try {
       const res = await api.get("/api-keys");
       setApiKeys(res.data || []);
     } catch (err) {
       console.error("Error fetching API keys:", err);
     }
-  };
+  }, []);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (activeTab === "reports") fetchJobs();
-    if (activeTab === "alerts") fetchAlerts();
-    if (activeTab === "settings") fetchApiKeys();
-  }, [activeTab]);
+    if (activeTab === "reports") {
+      void fetchJobs();
+    } else if (activeTab === "alerts") {
+      void fetchAlerts();
+    } else if (activeTab === "settings") {
+      void fetchApiKeys();
+    }
+  }, [activeTab, fetchJobs, fetchAlerts, fetchApiKeys]);
+
+
 
   /* ── Alert Interaction Triggers ────────────────────────── */
   const handleAcknowledgeAlert = async (alertId: string) => {
