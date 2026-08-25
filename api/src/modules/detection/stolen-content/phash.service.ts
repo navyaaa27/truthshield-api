@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { query } from '../../../shared/database/pool.js';
 import { redis } from '../../../shared/redis/index.js';
+import { createTempDir, cleanupTempDir } from '../../../utils/tempFiles.js';
 import { PHashResult, SimilarityMatch } from './stolen.types.js';
 import { logger } from '../../../utils/logger.js';
 
@@ -36,8 +37,9 @@ export class PHashService {
         // Clean up temporary parent directory if applicable
         if (frames.length > 0) {
           const tempDir = path.dirname(frames[0]);
-          await fs.rmdir(tempDir).catch(() => {});
+          await cleanupTempDir(tempDir).catch(() => {});
         }
+
 
         return {
           hash: JSON.stringify(hashes.length > 0 ? hashes : ['0'.repeat(64)]),
@@ -201,11 +203,7 @@ export class PHashService {
    * Resilient wrapper invoking FFmpeg command line to extract keyframes safely.
    */
   private async extractVideoKeyframes(filePath: string): Promise<string[]> {
-    const tempDir = path.join(
-      process.cwd(),
-      'truthshield-api/src/modules/detection/stolen-content/temp_' + Date.now(),
-    );
-    await fs.mkdir(tempDir, { recursive: true });
+    const tempDir = await createTempDir('phash-video');
 
     // 1. Resolve video duration
     const durRes = await execAsync(
@@ -227,3 +225,4 @@ export class PHashService {
     return extractedFrames;
   }
 }
+
