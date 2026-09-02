@@ -1,11 +1,10 @@
 import { Resend } from 'resend';
 import { IncomingWebhook } from '@slack/webhook';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 import { query } from '../../shared/database/pool.js';
 import { env } from '../../config/env.js';
 import { Alert } from './alert.types.js';
 import { logger } from '../../utils/logger.js';
+
 
 export class NotificationService {
   /**
@@ -69,6 +68,12 @@ export class NotificationService {
    * Dispatches HTML email alerts using Resend.
    */
   private static async sendEmailNotification(alert: Alert, org: any): Promise<void> {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      logger.warn('RESEND_API_KEY is not configured. Skipping email alert dispatch.');
+      return;
+    }
+
     const metadata = org.source_metadata || {};
     const recipient =
       metadata.notifications?.emailRecipient ||
@@ -77,8 +82,9 @@ export class NotificationService {
       'alerts@truthshield.ai';
 
     try {
+      const resend = new Resend(apiKey);
       await resend.emails.send({
-        from: env.SMTP_FROM || 'alerts@yourdomain.com',
+        from: env.SMTP_FROM || 'alerts@truthshield.ai',
         to: recipient,
         subject: `[TruthShield] ${alert.severity.toUpperCase()} Alert: ${alert.title}`,
         html: buildAlertEmailHtml(alert),
@@ -88,6 +94,7 @@ export class NotificationService {
       logger.error('Email notification failed', { error });
     }
   }
+
 
   /**
    * Dispatches rich Slack Block Kit block payloads using IncomingWebhook.
