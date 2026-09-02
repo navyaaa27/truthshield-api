@@ -6,9 +6,10 @@ import axios from "axios";
  * and handles 401 Unauthorized responses by clearing the session.
  */
 const api = axios.create({
-  baseURL: "http://localhost:3000/api/v1",
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1",
   headers: { "Content-Type": "application/json" },
 });
+
 
 // Attach JWT to every request
 api.interceptors.request.use((config) => {
