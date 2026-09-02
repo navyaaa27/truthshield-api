@@ -13,12 +13,16 @@ export class CacheService {
   async get<T>(key: string): Promise<T | null> {
     try {
       const value = await redisClient.get(key);
-      if (value === null) {
+      if (value === null || value === undefined) {
         logger.debug(`[Cache] MISS: ${key}`);
         return null;
       }
       logger.debug(`[Cache] HIT: ${key}`);
-      return JSON.parse(value) as T;
+      try {
+        return JSON.parse(value) as T;
+      } catch {
+        return value as unknown as T;
+      }
     } catch (err: any) {
       logger.warn(`[Cache] get() failed for key "${key}": ${err.message}`);
       return null;
@@ -30,14 +34,16 @@ export class CacheService {
    * Silently logs warnings on failure — never throws.
    */
   async set(key: string, value: unknown, ttlSeconds: number): Promise<void> {
+    if (value === undefined) return;
     try {
-      const serialized = JSON.stringify(value);
+      const serialized = typeof value === 'string' ? value : JSON.stringify(value);
       await redisClient.setex(key, ttlSeconds, serialized);
       logger.debug(`[Cache] SET: ${key} (TTL: ${ttlSeconds}s)`);
     } catch (err: any) {
       logger.warn(`[Cache] set() failed for key "${key}": ${err.message}`);
     }
   }
+
 
   /**
    * Deletes a single cached key.
