@@ -284,15 +284,17 @@ export class ApiKeyService {
       }
 
       // 4. IP allowlist checking
+      const normalizedIp = remoteIp?.startsWith('::ffff:') ? remoteIp.substring(7) : remoteIp;
+
       if (record.allowed_ips && record.allowed_ips.length > 0) {
-        if (!remoteIp) {
+        if (!normalizedIp) {
           return { valid: false, reason: 'IP validation required but remote IP is missing' };
         }
-        const ipMatch = record.allowed_ips.some((cidr: string) => isIpInCidr(remoteIp, cidr));
+        const ipMatch = record.allowed_ips.some((cidr: string) => isIpInCidr(normalizedIp, cidr));
         if (!ipMatch) {
           return {
             valid: false,
-            reason: `IP address ${remoteIp} is not authorized by allowed_ips allowlist`,
+            reason: `IP address ${normalizedIp} is not authorized by allowed_ips allowlist`,
           };
         }
       }
@@ -304,10 +306,11 @@ export class ApiKeyService {
              last_used_ip = $1,
              total_requests = total_requests + 1
          WHERE id = $2`,
-        [remoteIp || null, record.id],
+        [normalizedIp || null, record.id],
       ).catch((err) => {
         logger.error(`[ApiKeyService] Failed to update key usage statistics: ${err.message}`);
       });
+
 
       return {
         valid: true,
