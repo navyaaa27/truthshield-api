@@ -207,10 +207,17 @@ export default function DashboardPage() {
     const token = localStorage.getItem("ts_access_token");
     if (!token) return;
 
-    const socket = io("http://localhost:3000", {
+    const wsUrl =
+      import.meta.env.VITE_WS_URL ||
+      (import.meta.env.VITE_API_URL
+        ? (import.meta.env.VITE_API_URL as string).replace(/\/api\/v1\/?$/, "")
+        : "http://localhost:3000");
+
+    const socket = io(wsUrl, {
       auth: { token },
       transports: ["websocket", "polling"],
     });
+
 
     socketRef.current = socket;
 
