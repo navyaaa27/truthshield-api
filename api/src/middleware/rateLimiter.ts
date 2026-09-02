@@ -8,8 +8,11 @@ import { Request } from 'express';
 const skipTrustedIps = (req: Request) => {
   if (!env.RATE_LIMIT_SKIP_TRUSTED_IPS) return false;
   const trusted = env.RATE_LIMIT_SKIP_TRUSTED_IPS.split(',').map((i) => i.trim());
-  return trusted.includes(req.ip || '');
+  const rawIp = req.ip || '';
+  const cleanIp = rawIp.replace(/^::ffff:/, '');
+  return trusted.includes(rawIp) || trusted.includes(cleanIp);
 };
+
 
 const skipRateLimiting = (req: Request) => {
   if (process.env.NODE_ENV === 'test' && process.env.ENABLE_SECURITY_MIDDLEWARE !== 'true') {
