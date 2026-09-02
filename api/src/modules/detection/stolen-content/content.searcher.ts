@@ -78,7 +78,8 @@ export class ContentSearcher {
    * TODO: Enterprise tier will use dedicated image search APIs (Google Cloud Vision, TinEye)
    */
   private async searchWebImages(s3Key: string): Promise<ContentSearchResult[]> {
-    const mockPublicUrl = `https://truthshield-assets.s3.amazonaws.com/${s3Key}`;
+    const safeS3Key = s3Key.split('/').map(encodeURIComponent).join('/');
+    const mockPublicUrl = `https://truthshield-assets.s3.amazonaws.com/${safeS3Key}`;
     const encodedUrl = encodeURIComponent(mockPublicUrl);
     const googleSearchUrl = `https://images.google.com/searchbyimage?image_url=${encodedUrl}`;
 
@@ -95,8 +96,18 @@ export class ContentSearcher {
       const searchMatches: ContentSearchResult[] = [];
 
       $('a').each((_, element) => {
-        const url = $(element).attr('href') || '';
+        let url = $(element).attr('href') || '';
         const title = $(element).text() || '';
+
+        // Unwrap Google /url?q= redirect links if present
+        if (url.startsWith('/url?q=')) {
+          const rawTarget = url.slice(7).split('&')[0];
+          try {
+            url = decodeURIComponent(rawTarget);
+          } catch {
+            url = rawTarget;
+          }
+        }
 
         // Exclude internal Google navigation links and empty strings
         if (url.startsWith('http') && !url.includes('google.com') && title.trim().length > 0) {
@@ -111,6 +122,7 @@ export class ContentSearcher {
       });
 
       return searchMatches.slice(0, 10);
+
     } catch (err: any) {
       logger.warn(
         `Reverse image crawl lookup failed: ${err.message}. Returning empty matches list.`,
