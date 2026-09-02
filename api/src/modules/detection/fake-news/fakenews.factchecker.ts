@@ -216,13 +216,20 @@ Return a valid JSON object matching this schema:
         ),
       );
 
-      const content = response.data.content[0].text;
-      const cleanedJson = content
-        .trim()
-        .replace(/^```json/, '')
-        .replace(/```$/, '')
-        .trim();
+      const content = response.data?.content?.[0]?.text || '{}';
+      let cleanedJson = content.trim();
+      const jsonMatch = cleanedJson.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        cleanedJson = jsonMatch[1].trim();
+      } else {
+        const firstBrace = cleanedJson.indexOf('{');
+        const lastBrace = cleanedJson.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          cleanedJson = cleanedJson.slice(firstBrace, lastBrace + 1);
+        }
+      }
       const parsed = JSON.parse(cleanedJson);
+
 
       return {
         verdict: parsed.verdict || 'uncertain',
