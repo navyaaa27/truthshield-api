@@ -61,16 +61,20 @@ export class ArticleScraper {
     const parsedUrl = new URL(url);
     const domain = parsedUrl.hostname.toLowerCase().replace(/^www\./, '');
 
-    // 2. Perform safe HTTP request with User-Agent and Timeout limits
+    // 2. Perform safe HTTP request with User-Agent, maxContentLength, and Timeout limits
     const response = await axios.get(url, {
       timeout: 10000, // 10 seconds
+      maxContentLength: 5 * 1024 * 1024, // 5MB limit to prevent memory exhaustion
+      responseType: 'text',
       headers: {
         'User-Agent': 'TruthShieldBot/1.0',
+        Accept: 'text/html,application/xhtml+xml',
       },
     });
 
-    const html = response.data;
+    const html = typeof response.data === 'string' ? response.data : String(response.data || '');
     const $ = cheerio.load(html);
+
 
     // 3. Extract title: og:title -> title tag -> first h1
     let title = $('meta[property="og:title"]').attr('content') || '';
