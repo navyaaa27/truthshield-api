@@ -207,26 +207,38 @@ export class MetadataTamperingAnalyzer {
       return { flags };
     }
 
-    const software = exif.Software || undefined;
-    const cameraModel = exif.Model || exif.Make || undefined;
+    const rawSoftware = exif.Software || exif.software;
+    const software =
+      typeof rawSoftware === 'string'
+        ? rawSoftware
+        : rawSoftware
+          ? String(rawSoftware)
+          : undefined;
+
+    const rawModel = exif.Model || exif.Make || exif.model || exif.make;
+    const cameraModel =
+      typeof rawModel === 'string' ? rawModel : rawModel ? String(rawModel) : undefined;
+
     const createDate = exif.CreateDate || exif.DateTimeOriginal || undefined;
     const modifyDate = exif.ModifyDate || exif.DateTime || undefined;
 
     let gpsData: { latitude: number; longitude: number } | undefined;
     if (exif.latitude !== undefined && exif.longitude !== undefined) {
       gpsData = {
-        latitude: exif.latitude,
-        longitude: exif.longitude,
+        latitude: Number(exif.latitude),
+        longitude: Number(exif.longitude),
       };
     }
 
     // 1. Flag: Editing software detected
     if (software) {
-      const hasEditingSoftware = EDITING_SOFTWARE.some((s) => software.toLowerCase().includes(s));
+      const lowerSoftware = software.toLowerCase();
+      const hasEditingSoftware = EDITING_SOFTWARE.some((s) => lowerSoftware.includes(s));
       if (hasEditingSoftware) {
         flags.push('editing_software_detected');
       }
     }
+
 
     // 2. Flag: GPS coordinates inconsistent with metadata location claims
     // We flag if GPS coordinates exist but metadata tags like City/Country indicate otherwise (e.g. mock claims)
