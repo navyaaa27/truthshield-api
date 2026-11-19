@@ -11,7 +11,7 @@ export interface UpdateUserProfileInput {
 export class UsersService {
   static async getProfile(userId: string) {
     const res = await query(
-      `SELECT id, email, role, organization_id, is_two_factor_enabled, created_at, updated_at 
+      `SELECT id, email, role, COALESCE(organization_id, org_id) as organization_id, COALESCE(is_two_factor_enabled, mfa_enabled) as is_two_factor_enabled, created_at, updated_at 
        FROM users WHERE id = $1`,
       [userId],
     );

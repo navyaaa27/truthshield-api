@@ -5,7 +5,7 @@ import { ReviewService } from '../../modules/review/review.service.js';
 
 export let scheduledQueue: Queue;
 
-if (process.env.NODE_ENV === 'test') {
+if (process.env.NODE_ENV === 'test' || process.env.MOCK_INFRA === 'true') {
   scheduledQueue = {
     add: async () => {},
     on: () => {},

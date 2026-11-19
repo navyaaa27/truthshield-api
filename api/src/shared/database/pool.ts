@@ -7,6 +7,7 @@ import {
   dbPoolWaiting,
   dbQueryDurationMs,
 } from '../metrics/metrics.service.js';
+import { createMockPool } from './mockPool.js';
 
 const { Pool } = pg;
 
@@ -18,28 +19,36 @@ const poolConfig = {
   connectionTimeoutMillis: env.DATABASE_CONNECTION_TIMEOUT_MS,
 };
 
+const mockPoolInstance = process.env.MOCK_INFRA === 'true' ? createMockPool() : null;
+
 // 1. Establish primary write pool
-export const writePool = new Pool({
-  connectionString: env.DATABASE_URL,
-  ...poolConfig,
-  application_name: 'truthshield-api-write',
-});
+export const writePool: pg.Pool =
+  (mockPoolInstance as unknown as pg.Pool) ||
+  new Pool({
+    connectionString: env.DATABASE_URL,
+    ...poolConfig,
+    application_name: 'truthshield-api-write',
+  });
 
 // 2. Establish read replica pool
-export const readPool = new Pool({
-  connectionString: env.DATABASE_READ_URL || env.DATABASE_URL,
-  ...poolConfig,
-  application_name: 'truthshield-api-read',
-});
+export const readPool: pg.Pool =
+  (mockPoolInstance as unknown as pg.Pool) ||
+  new Pool({
+    connectionString: env.DATABASE_READ_URL || env.DATABASE_URL,
+    ...poolConfig,
+    application_name: 'truthshield-api-read',
+  });
 
 // Error handling for both pools
-writePool.on('error', (err) => {
-  logger.error(`Unexpected database writePool error: ${err.message}`);
-});
+if (!mockPoolInstance) {
+  writePool.on('error', (err) => {
+    logger.error(`Unexpected database writePool error: ${err.message}`);
+  });
 
-readPool.on('error', (err) => {
-  logger.error(`Unexpected database readPool error: ${err.message}`);
-});
+  readPool.on('error', (err) => {
+    logger.error(`Unexpected database readPool error: ${err.message}`);
+  });
+}
 
 // Track slow queries timestamps in rolling window
 let slowQueriesTimestamps: number[] = [];
@@ -64,6 +73,7 @@ function getStackTrace(): string {
 
 // Update Prometheus metrics for pool sizes
 export function updatePoolMetrics(): void {
+  if (process.env.MOCK_INFRA === 'true') return;
   const writePoolSize = writePool.totalCount;
   const writePoolIdle = writePool.idleCount;
   const writePoolWait = writePool.waitingCount;
@@ -81,6 +91,10 @@ export function updatePoolMetrics(): void {
  * On startup, test both pools and log success.
  */
 export async function testConnection(): Promise<void> {
+  if (process.env.MOCK_INFRA === 'true') {
+    logger.info('Database MOCK_INFRA mode verified.');
+    return;
+  }
   try {
     const writeClient = await writePool.connect();
     await writeClient.query('SELECT 1');

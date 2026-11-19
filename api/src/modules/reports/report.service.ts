@@ -16,10 +16,12 @@ export class ReportService {
   private renderer = new ReportRenderer();
 
   constructor() {
-    // Proactively initialize the PDF renderer in the background
-    this.renderer.initialize().catch((err) => {
-      logger.error(`[ReportService] Renderer pre-initialization failed: ${err.message}`);
-    });
+    if (process.env.PDF_ENABLED === 'true') {
+      // Proactively initialize the PDF renderer in the background
+      this.renderer.initialize().catch((err) => {
+        logger.error(`[ReportService] Renderer pre-initialization failed: ${err.message}`);
+      });
+    }
   }
 
   /**

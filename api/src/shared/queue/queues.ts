@@ -23,7 +23,10 @@ const setupQueueListeners = (queue: Queue, name: string) => {
   });
 };
 
-if (process.env.NODE_ENV === 'test' && typeof (Queue as any).mock === 'undefined') {
+if (
+  (process.env.NODE_ENV === 'test' || process.env.MOCK_INFRA === 'true') &&
+  typeof (Queue as any).mock === 'undefined'
+) {
   const mockQueue = (name: string) => ({
     name,
     add: async (_jobName: string, data: any, opts: any) => ({

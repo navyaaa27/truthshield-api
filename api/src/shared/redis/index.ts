@@ -1,22 +1,7 @@
-import { Redis } from 'ioredis';
-import { env } from '../../config/env.js';
+import { redisClient } from './redis.client.js';
 import { logger } from '../../utils/logger.js';
 
-export const redis = new Redis(env.REDIS_URL, {
-  maxRetriesPerRequest: null, // Required by BullMQ
-  reconnectOnError: (err: Error) => {
-    logger.warn(`Redis reconnection triggered by error: ${err.message}`);
-    return true;
-  },
-});
-
-redis.on('connect', () => {
-  logger.info('Connected to Redis server.');
-});
-
-redis.on('error', (err: any) => {
-  logger.error(`Redis connection error: ${err.message}`);
-});
+export const redis = redisClient;
 
 /**
  * Standard Redis helper utilities
