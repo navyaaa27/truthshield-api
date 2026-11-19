@@ -1,16 +1,16 @@
 <div align="center">
 
-  # ðŸ›¡ï¸ TruthShield AI
+  # :shield: TruthShield AI
 
   ### *Enterprise-Grade Multimodal Forensics Engine for Deepfakes, Misinformation & Digital Media Authenticity*
 
   <p align="center">
-    <a href="#-key-features">Features</a> â€¢
-    <a href="#-system-architecture">Architecture</a> â€¢
-    <a href="#-instant-quickstart">Instant Quickstart</a> â€¢
-    <a href="#-api-reference">API Reference</a> â€¢
-    <a href="#-tech-stack">Tech Stack</a> â€¢
-    <a href="#-security--compliance">Security</a>
+    <a href="#-key-features">Features</a> &bull;
+    <a href="#-system-architecture">Architecture</a> &bull;
+    <a href="#-instant-quickstart">Instant Quickstart</a> &bull;
+    <a href="#-api-reference">API Reference</a> &bull;
+    <a href="#-tech-stack">Tech Stack</a> &bull;
+    <a href="#-security--defensive-architecture">Security</a>
   </p>
 
   <p align="center">
@@ -28,7 +28,7 @@
 
 ---
 
-## ðŸ“Œ Executive Overview
+## :pushpin: Executive Overview
 
 **TruthShield** is an industrial-strength, full-stack media forensics and verification platform built for journalists, intelligence analysts, fact-checkers, and digital newsrooms. In an era where generative AI creates indistinguishable synthetic media and coordinated disinformation campaigns spread rapidly, TruthShield provides automated, real-time, multi-layered verification across images, videos, audio, and textual claims.
 
@@ -36,18 +36,18 @@ By synthesizing predictive neural networks, computer vision heuristics, large la
 
 ---
 
-## âš¡ Live Highlights & Differentiators
+## :zap: Live Highlights & Differentiators
 
-- ðŸ” **Real-Time Multimodal Analysis**: Parallel inspection of video frames, image tensors, audio waveforms, and raw text claims.
-- âš¡ **Zero-Config Developer Preview**: Built-in in-memory database (`pg-mem`) and queue emulation allowing the entire full-stack app to run locally without installing Postgres or Redis.
-- ðŸŽ›ï¸ **High-Contrast Forensics Dashboard**: Tactical dark-mode command center styled with high-contrast emerald aesthetics, interactive metric visualizations, and live event telemetry.
-- ðŸ”„ **Real-Time Push Architecture**: Powered by WebSockets and BullMQ distributed task queues with zero-latency alert notifications.
-- ðŸ›¡ï¸ **Enterprise Multi-Tenancy**: Built-in Organization boundaries, Row-Level Security (RLS), TOTP Two-Factor Authentication, and scoped API key management.
-- ðŸ“‘ **Comprehensive Audit Exports**: Automated forensic PDF dossiers with watermarking, verification hashes, and chain-of-custody metadata.
+- :mag: **Real-Time Multimodal Analysis**: Parallel inspection of video frames, image tensors, audio waveforms, and raw text claims.
+- :zap: **Zero-Config Developer Preview**: Built-in in-memory database (`pg-mem`) and queue emulation allowing the entire full-stack app to run locally without installing Postgres or Redis.
+- :control_knobs: **High-Contrast Forensics Dashboard**: Tactical dark-mode command center styled with high-contrast emerald aesthetics, interactive metric visualizations, and live event telemetry.
+- :arrows_counterclockwise: **Real-Time Push Architecture**: Powered by WebSockets and BullMQ distributed task queues with zero-latency alert notifications.
+- :shield: **Enterprise Multi-Tenancy**: Built-in Organization boundaries, Row-Level Security (RLS), TOTP Two-Factor Authentication, and scoped API key management.
+- :clipboard: **Comprehensive Audit Exports**: Automated forensic PDF dossiers with watermarking, verification hashes, and chain-of-custody metadata.
 
 ---
 
-## ðŸ—ï¸ System Architecture
+## :building_construction: System Architecture
 
 ```mermaid
 flowchart TD
@@ -70,10 +70,10 @@ flowchart TD
     end
 
     subgraph ENGINES["4. Forensics & Inference Workers"]
-        D1["Deepfake Vision Engine\nâ€¢ Facial artifact detection\nâ€¢ GAN noise signatures\nâ€¢ AWS Rekognition / Hive AI"]
-        D2["Misinformation Engine\nâ€¢ Claude 3.5 Sonnet validation\nâ€¢ Google Fact Check Tools\nâ€¢ Source corroboration"]
-        D3["Stolen Content Radar\nâ€¢ Perceptual Hashing (pHash)\nâ€¢ Vector Hamming distance\nâ€¢ DMCA tracking"]
-        D4["EXIF & Metadata Tampering\nâ€¢ Hex dump inspection\nâ€¢ GPS / Chrono-sequence\nâ€¢ Software fingerprinting"]
+        D1["Deepfake Vision Engine\n• Facial artifact detection\n• GAN noise signatures\n• AWS Rekognition / Hive AI"]
+        D2["Misinformation Engine\n• Claude 3.5 Sonnet validation\n• Google Fact Check Tools\n• Source corroboration"]
+        D3["Stolen Content Radar\n• Perceptual Hashing (pHash)\n• Vector Hamming distance\n• DMCA tracking"]
+        D4["EXIF & Metadata Tampering\n• Hex dump inspection\n• GPS / Chrono-sequence\n• Software fingerprinting"]
     end
 
     subgraph STORAGE["5. Data & Telemetry"]
@@ -97,35 +97,35 @@ flowchart TD
 
 ---
 
-## âœ¨ Key Features & Capabilities
+## :sparkles: Key Features & Capabilities
 
-### ðŸ‘ï¸ 1. Deepfake & Synthetic Media Detection
+### :eye: 1. Deepfake & Synthetic Media Detection
 - **Facial Landmark Artifacts**: Analyzes warping, eye reflections, teeth consistency, and blended boundaries.
 - **GAN / Diffusion Fingerprints**: Computes spectral frequencies to isolate generator artifacts left by Midjourney, Stable Diffusion, Flux, and Sora models.
 - **Confidence Calibration**: Returns a calibrated probability score (`0-100%`) alongside detailed diagnostic flags.
 
-### ðŸ“° 2. Claim Verification & Misinformation Radar
+### :newspaper: 2. Claim Verification & Misinformation Radar
 - **Automated Claim Extraction**: Parses unstructured articles, social media links, and transcripts into discrete factual claims.
 - **LLM Consensus Engine**: Queries Claude 3.5 Sonnet to cross-reference claims against thousands of verified news sources and the Google Fact Check API.
 - **Credibility Scoring**: Generates contextual source credibility ratings with citations.
 
-### ðŸŽ¯ 3. Stolen Content & Perceptual Hashing (pHash)
+### :dart: 3. Stolen Content & Perceptual Hashing (pHash)
 - **Visual Fingerprinting**: Converts media into 64-bit perceptual hashes invariant to scaling, cropping, slight rotations, and compression artifacts.
 - **Reverse Media Matching**: Instantly identifies duplicates across brand assets and public repositories.
 - **Automated DMCA Packets**: Generates formal intellectual property infringement notices with timestamps and forensic hash evidence.
 
-### ðŸ‘¥ 4. Human-in-the-Loop (HITL) Review Portal
+### :busts_in_silhouette: 4. Human-in-the-Loop (HITL) Review Portal
 - **Analyst Queue**: High-risk or borderline media (`confidence 40-70%`) is routed automatically to human investigators.
 - **Strict SLA Timers**: Built-in 24-hour SLA countdowns with automatic escalation and alert management.
 - **Verdict Overrides**: Investigators can record notes, adjust confidence verdicts, and trigger audit log events.
 
-### ðŸ”‘ 5. Developer Platform & Scoped API Keys
+### :key: 5. Developer Platform & Scoped API Keys
 - Provision instant `ts_live_...` API keys with customizable permissions (`jobs:create`, `reports:read`, etc.).
 - Granular per-minute rate limiting with IP whitelisting and abuse anomaly mitigation.
 
 ---
 
-## ðŸ› ï¸ Tech Stack Matrix
+## :hammer_and_wrench: Tech Stack Matrix
 
 | Domain | Technology | Purpose |
 | :--- | :--- | :--- |
@@ -142,7 +142,7 @@ flowchart TD
 
 ---
 
-## ðŸš€ Instant Quickstart
+## :rocket: Instant Quickstart
 
 TruthShield includes a built-in **In-Memory Preview Mode** (`MOCK_INFRA=true`). You can boot the entire stack and test all user auth, dashboard tabs, API keys, and jobs **without installing PostgreSQL or Redis locally**.
 
@@ -154,7 +154,7 @@ TruthShield includes a built-in **In-Memory Preview Mode** (`MOCK_INFRA=true`). 
 
 ### Step 1: Clone the Repository
 ```bash
-git clone https://github.com/your-org/truthshield-api.git
+git clone https://github.com/navyaaa27/truthshield-api.git
 cd truthshield-api
 ```
 
@@ -207,26 +207,26 @@ npm run dev
 
 ---
 
-## âš™ï¸ Environment Configuration
+## :gear: Environment Configuration
 
 Backend configuration is validated at runtime via **Zod** (`api/src/config/env.ts`). Below is the variable reference:
 
 ```env
-# â”€â”€ Core Infrastructure â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Core Infrastructure ──────────────────────────────────────────
 PORT=3000                                 # API HTTP Server Port
 NODE_ENV=development                     # 'development' | 'production' | 'test'
 MOCK_INFRA=true                           # Set 'true' for zero-dependency local mode
 
-# â”€â”€ Primary Database (PostgreSQL / Neon) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Primary Database (PostgreSQL / Neon) ─────────────────────────
 DATABASE_URL=postgresql://user:pass@ep-host.neon.tech/truthshield?sslmode=require
 DATABASE_READ_URL=                        # Optional read-replica URL
 DATABASE_POOL_MIN=2
 DATABASE_POOL_MAX=20
 
-# â”€â”€ Distributed Queue (Redis / Upstash) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Distributed Queue (Redis / Upstash) ──────────────────────────
 REDIS_URL=redis://default:token@host.upstash.io:6379
 
-# â”€â”€ Security & Authentication â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Security & Authentication ────────────────────────────────────
 JWT_SECRET=your_super_secret_jwt_signing_key_32_chars_min
 JWT_REFRESH_SECRET=your_super_secret_jwt_refresh_key_32_chars_min
 JWT_EXPIRES_IN=15m
@@ -234,13 +234,13 @@ JWT_REFRESH_EXPIRES_IN=7d
 TOTP_ISSUER=TruthShieldAI
 ADMIN_SECRET=admin-secret-key-12345
 
-# â”€â”€ Cloud Object Storage (Cloudflare R2 / AWS S3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Cloud Object Storage (Cloudflare R2 / AWS S3) ────────────────
 S3_BUCKET_NAME=truthshield-media
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 
-# â”€â”€ AI Models & Forensics Integrations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── AI Models & Forensics Integrations ───────────────────────────
 ANTHROPIC_API_KEY=sk-ant-...              # Claude 3.5 Sonnet Fact Check
 GOOGLE_FACT_CHECK_API_KEY=AIzaSy...       # Google Claim Review API
 HIVE_MODERATION_API_KEY=                  # Deepfake & Visual Forensics
@@ -248,39 +248,39 @@ HIVE_MODERATION_API_KEY=                  # Deepfake & Visual Forensics
 
 ---
 
-## ðŸ“¡ REST API Reference
+## :satellite: REST API Reference
 
 All authenticated endpoints accept a Bearer token: `Authorization: Bearer <token>` or an API key: `x-api-key: ts_live_...`.
 
 ### Auth Endpoints
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :---: |
-| `POST` | `/api/v1/auth/register` | Register new organization & admin user | âŒ |
-| `POST` | `/api/v1/auth/login` | Authenticate credentials & issue JWTs | âŒ |
-| `POST` | `/api/v1/auth/refresh` | Rotate access token using refresh token | âŒ |
-| `GET`  | `/api/v1/users/me` | Fetch active user profile & org metadata | âœ… |
+| `POST` | `/api/v1/auth/register` | Register new organization & admin user | No |
+| `POST` | `/api/v1/auth/login` | Authenticate credentials & issue JWTs | No |
+| `POST` | `/api/v1/auth/refresh` | Rotate access token using refresh token | No |
+| `GET`  | `/api/v1/users/me` | Fetch active user profile & org metadata | Yes |
 
 ### Detection & Forensics
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :---: |
-| `POST` | `/api/v1/jobs` | Submit new media or claim for forensic scan | âœ… |
-| `GET`  | `/api/v1/jobs` | List recent scans with pagination & filters | âœ… |
-| `GET`  | `/api/v1/jobs/:id` | Retrieve comprehensive forensic breakdown | âœ… |
-| `POST` | `/api/v1/uploads/presign` | Generate secure presigned URL for S3 upload | âœ… |
+| `POST` | `/api/v1/jobs` | Submit new media or claim for forensic scan | Yes |
+| `GET`  | `/api/v1/jobs` | List recent scans with pagination & filters | Yes |
+| `GET`  | `/api/v1/jobs/:id` | Retrieve comprehensive forensic breakdown | Yes |
+| `POST` | `/api/v1/uploads/presign` | Generate secure presigned URL for S3 upload | Yes |
 
 ### Alerts & Triage
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :---: |
-| `GET`   | `/api/v1/alerts` | Retrieve active high/critical severity alerts | âœ… |
-| `PATCH` | `/api/v1/alerts/:id/acknowledge` | Acknowledge alert and silence notifications | âœ… |
-| `PATCH` | `/api/v1/alerts/:id/resolve` | Mark alert as resolved with triage notes | âœ… |
+| `GET`   | `/api/v1/alerts` | Retrieve active high/critical severity alerts | Yes |
+| `PATCH` | `/api/v1/alerts/:id/acknowledge` | Acknowledge alert and silence notifications | Yes |
+| `PATCH` | `/api/v1/alerts/:id/resolve` | Mark alert as resolved with triage notes | Yes |
 
 ### API Credentials & Reports
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :---: |
-| `GET`  | `/api/v1/api-keys` | List active organization API keys | âœ… |
-| `POST` | `/api/v1/api-keys` | Generate new scoped API key (`ts_live_...`) | âœ… |
-| `POST` | `/api/v1/reports` | Compile automated PDF forensic audit dossier | âœ… |
+| `GET`  | `/api/v1/api-keys` | List active organization API keys | Yes |
+| `POST` | `/api/v1/api-keys` | Generate new scoped API key (`ts_live_...`) | Yes |
+| `POST` | `/api/v1/reports` | Compile automated PDF forensic audit dossier | Yes |
 
 ---
 
@@ -314,7 +314,7 @@ curl -X POST http://localhost:3000/api/v1/jobs \
 
 ---
 
-## ðŸ”’ Security & Defensive Architecture
+## :lock: Security & Defensive Architecture
 
 - **Row-Level Security (RLS)**: Enforced across PostgreSQL tenant tables to guarantee data isolation between organizations.
 - **Cryptographic Token Lifecycle**: Access tokens expire in 15 minutes; refresh tokens use cryptographic rotation with immediate revocation blacklists.
@@ -324,7 +324,7 @@ curl -X POST http://localhost:3000/api/v1/jobs \
 
 ---
 
-## ðŸ§ª Testing & Code Quality
+## :test_tube: Testing & Code Quality
 
 TruthShield adheres to rigorous testing standards across both unit and integration suites:
 
@@ -345,7 +345,7 @@ npm run format
 
 ---
 
-## ðŸ—ºï¸ Roadmap & Upcoming Milestones
+## :world_map: Roadmap & Upcoming Milestones
 
 - [x] Multi-tenant organization architecture & Row-Level Security
 - [x] Real-time BullMQ background pipeline with priority queueing
@@ -358,7 +358,7 @@ npm run format
 
 ---
 
-## ðŸ¤ Contributing
+## :handshake: Contributing
 
 We welcome contributions from researchers, security engineers, and developers!
 
@@ -372,10 +372,10 @@ Please ensure all tests pass and code complies with ESLint and Prettier rules be
 
 ---
 
-## ðŸ“„ License
+## :page_facing_up: License
 
 Distributed under the **MIT License**. See `LICENSE` for more details.
 
 <div align="center">
-  <sub>Built with precision to safeguard the integrity of digital information. Â© 2026 TruthShield AI.</sub>
+  <sub>Built with precision to safeguard the integrity of digital information. &copy; 2026 TruthShield AI.</sub>
 </div>
