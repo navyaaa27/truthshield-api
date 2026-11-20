@@ -7,3 +7,13 @@ node_modules/
 dist/
 temp_files_dir/
 api/database.json
+
+# PyTorch model checkpoints (large binary files)
+api/models/*.pth
+!api/models/.gitkeep
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+

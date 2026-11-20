@@ -23,6 +23,7 @@ import apikeyRoutes from './modules/api-keys/apikey.routes.js';
 import clientApiRoutes from './modules/client-api/client.routes.js';
 import billingRoutes from './modules/billing/billing.routes.js';
 import { webhookRouter } from './modules/billing/stripe.webhook.js';
+import faceAnalysisRoutes from './modules/face-analysis/face.routes.js';
 import { checkDatabaseHealth } from './shared/database/index.js';
 import { checkRedisHealth } from './shared/redis/index.js';
 import { getIO } from './shared/websocket/socket.server.js';
@@ -284,6 +285,7 @@ app.use('/api/v1', bypassIfClientApiKey(dashboardRoutes));
 app.use('/api/v1', bypassIfClientApiKey(reportRoutes));
 app.use('/api/v1/api-keys', bypassIfClientApiKey(apikeyRoutes));
 app.use('/api/v1', bypassIfClientApiKey(billingRoutes));
+app.use('/api/v1', bypassIfClientApiKey(faceAnalysisRoutes));
 app.use('/api', clientApiRoutes);
 
 // 8. 404 handler for unmatched routes

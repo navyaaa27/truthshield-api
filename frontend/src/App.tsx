@@ -4,6 +4,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
+import FaceAnalysisPage from "./pages/FaceAnalysisPage";
 
 function App() {
   return (
@@ -17,6 +18,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/face-analysis"
+            element={
+              <ProtectedRoute>
+                <FaceAnalysisPage />
               </ProtectedRoute>
             }
           />
