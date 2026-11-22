@@ -26,8 +26,9 @@ const upload = multer({
 });
 
 // ── Paths ──────────────────────────────────────────────────────────────────────
-const SCRIPT_PATH = path.resolve(__dirname, '../../../../scripts/infer_face.py');
-const MODEL_PATH  = path.resolve(__dirname, '../../../../models/deepfake_head.pth');
+// __dirname = api/src/modules/face-analysis/  → go up 3 levels to reach api/
+const SCRIPT_PATH = path.resolve(__dirname, '../../../scripts/infer_face.py');
+const MODEL_PATH  = path.resolve(__dirname, '../../../models/deepfake_head.pth');
 
 // ── Run Python inference (one subprocess per request; simple & robust) ─────────
 function runInference(imageBuffer: Buffer): Promise<{
