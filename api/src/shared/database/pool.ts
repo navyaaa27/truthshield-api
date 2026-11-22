@@ -12,20 +12,30 @@ import { createMockPool } from './mockPool.js';
 const { Pool } = pg;
 
 // Connection configurations
+const isSsl = env.DATABASE_URL.includes('sslmode=') || env.DATABASE_URL.includes('supabase.com');
+const sslConfig = isSsl ? { ssl: { rejectUnauthorized: false } } : {};
+
 const poolConfig = {
   min: env.DATABASE_POOL_MIN,
   max: env.DATABASE_POOL_MAX,
   idleTimeoutMillis: env.DATABASE_IDLE_TIMEOUT_MS,
   connectionTimeoutMillis: env.DATABASE_CONNECTION_TIMEOUT_MS,
+  ...sslConfig,
 };
 
-const mockPoolInstance = process.env.MOCK_INFRA === 'true' ? createMockPool() : null;
+const cleanDbUrl = env.DATABASE_URL.replace(/[\?&]sslmode=[^&]*/, '');
+const cleanReadDbUrl = (env.DATABASE_READ_URL || env.DATABASE_URL).replace(/[\?&]sslmode=[^&]*/, '');
+
+const mockPoolInstance =
+  process.env.MOCK_INFRA === 'true' && process.env.MOCK_DB !== 'false'
+    ? createMockPool()
+    : null;
 
 // 1. Establish primary write pool
 export const writePool: pg.Pool =
   (mockPoolInstance as unknown as pg.Pool) ||
   new Pool({
-    connectionString: env.DATABASE_URL,
+    connectionString: cleanDbUrl,
     ...poolConfig,
     application_name: 'truthshield-api-write',
   });
@@ -34,7 +44,7 @@ export const writePool: pg.Pool =
 export const readPool: pg.Pool =
   (mockPoolInstance as unknown as pg.Pool) ||
   new Pool({
-    connectionString: env.DATABASE_READ_URL || env.DATABASE_URL,
+    connectionString: cleanReadDbUrl,
     ...poolConfig,
     application_name: 'truthshield-api-read',
   });
@@ -91,7 +101,7 @@ export function updatePoolMetrics(): void {
  * On startup, test both pools and log success.
  */
 export async function testConnection(): Promise<void> {
-  if (process.env.MOCK_INFRA === 'true') {
+  if (mockPoolInstance) {
     logger.info('Database MOCK_INFRA mode verified.');
     return;
   }

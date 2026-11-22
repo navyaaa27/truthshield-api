@@ -17,11 +17,11 @@ async function bootstrap() {
     logger.info('       TruthShield API Server Booting        ');
     logger.info('=============================================');
     logger.info('Connecting to PostgreSQL database...');
-    if (process.env.MOCK_INFRA !== 'true') {
+    if (process.env.MOCK_DB === 'false' || process.env.MOCK_INFRA !== 'true') {
       try {
         const dbClient = await pool.connect();
         dbClient.release();
-        logger.info('PostgreSQL connection established successfully.');
+        logger.info('PostgreSQL (Supabase) connection established successfully.');
       } catch (err: any) {
         logger.warn(
           `Could not connect to PostgreSQL: ${err.message}. Server starting in offline mode.`,
